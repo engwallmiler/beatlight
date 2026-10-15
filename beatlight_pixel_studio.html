@@ -91,7 +91,7 @@
     <noscript><p class="notice">Ative o JavaScript no navegador para executar a demonstração.</p></noscript>
     <canvas id="stage" width="1200" height="560" aria-label="Palco virtual de seis colunas de LED animadas"></canvas>
     <div class="stage-meta"><span><strong>600 LEDs / barra</strong> · 200 pixels · 3 LEDs por pixel · <strong id="colorModeRead">RGB</strong></span><span id="totalRead">6 barras · 3.600 LEDs · 1.200 pixels</span></div>
-    <div class="beat-meter"><span>COMPASSO</span><span id="beatMeter" style="display:flex;gap:8px" aria-label="Batidas do compasso"></span><span id="kickRead">Kick automático</span><span id="flashRead">2 flashes laterais · só no drop</span></div>
+    <div class="beat-meter"><span>COMPASSO</span><span id="beatMeter" style="display:flex;gap:8px" aria-label="Batidas do compasso"></span><span id="kickRead">Kick automático</span><span id="flashRead">2 flashes superiores · só no drop</span></div>
     <div class="status-grid">
       <div class="stat"><div class="stat-label">BPM simulado</div><div class="stat-value" id="bpmRead">130</div></div>
       <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
@@ -161,14 +161,14 @@
       </fieldset>
       <p class="hint">Em “Cores do efeito”, Arco-íris e Chamas usam cores próprias. Os outros comportamentos substituem essas cores. Para máxima saturação, use RGB ou Mistura W em 0%.</p>
       <fieldset class="white-controls">
-        <legend>Flashes laterais · 1 de cada lado</legend>
+        <legend>Flashes superiores · sincronizados</legend>
         <button id="strobeToggleBtn" type="button" aria-pressed="true">Flashes: ligados</button>
         <div class="select-row">
           <div><label for="strobeMode">Participação</label><select id="strobeMode"><option value="drop">Só durante o drop</option><option value="beat">Batidas + drop</option><option value="bar">Primeiro tempo do compasso</option></select></div>
           <div><label for="strobeColor">Luz do flash</label><select id="strobeColor"><option value="rgbw">RGBW · cor + branco</option><option value="rgb">RGB · cor saturada</option><option value="white">Somente branco</option></select></div>
         </div>
         <div class="ctrl"><label for="strobeLevel">Intensidade</label><input id="strobeLevel" type="range" min="0" max="100" value="70"><output id="strobeLevelValue">70%</output></div>
-        <p class="hint">Os dois flashes acompanham o mesmo relógio das mangueiras. Desligar interrompe a emissão imediatamente, inclusive no drop.</p>
+        <p class="hint">Um flash em cada canto superior, disparando sempre juntos. Na intensidade máxima, o clarão ganha um halo amplo e forte dispersão de luz. Desligar apaga os dois imediatamente.</p>
       </fieldset>
       <div class="button-row"><button id="restartBtn">↺ Reiniciar apresentação</button><button id="fullscreenBtn">⛶ Tela cheia</button></div>
       <p class="hint">O BPM gera batidas internamente. Kick e Clap adicionam acentos manuais; Drop arma uma sequência. Não é necessário carregar música.</p>
@@ -580,7 +580,7 @@
     ctx.globalAlpha=.18;ctx.filter='blur(9px)';ctx.drawImage(lightLayer,0,-bottom);
     ctx.restore();ctx.restore();
   }
-  function strobeOutput(side){
+  function strobeOutput(){
     if(!state.strobes||state.strobeLevel===0||state.brightness===0||(state.strobeMode==='drop'&&!dropRun.active))return [0,0,0,0];
     const drop=dropRun.active?.descriptor;
     const barOnly=state.strobeMode==='bar';
@@ -588,28 +588,44 @@
     const clock=state.beat*rate,tick=Math.floor(clock),age=fract(clock)/rate*60/state.bpm;
     if(age>=.085)return [0,0,0,0];
     const first=Math.abs((tick/rate)%state.meter)<1e-8;
-    const together=first||(drop&&dropSection(drop)==='blast'&&tick%4===0)||barOnly;
-    if(!together&&tick%2!==side)return [0,0,0,0];
-    const power=Math.exp(-age/.03)*state.strobeLevel*state.brightness;
-    const color=sceneColor('flash',side,.5,2);
+    // One shared pulse and color for both fixtures. Keep HDR energy until display mapping.
+    const drive=state.strobeLevel*(1+3*state.strobeLevel**3);
+    const power=Math.exp(-age/.03)*drive*state.brightness;
+    const color=sceneColor('flash',0,.5,1);
     const white=state.strobeColor==='white'?1:state.strobeColor==='rgb'?0:first?.85:.4;
     return [color[0]/255*power*(1-white),color[1]/255*power*(1-white),color[2]/255*power*(1-white),power*white];
   }
   function drawStrobes(){
+    const channels=strobeOutput();
+    const linear=channels.slice(0,3).map((v,i)=>v+channels[3]*whiteTones[state.whiteTone][i]);
+    const rgb=linear.map(v=>Math.round(255*(1-Math.exp(-5*v))));
+    const hot=clamp((Math.max(...linear)-.35)/2.6);
     for(let side=0;side<2;side++){
-      const x=side===0?53:W-53,y=274,channels=strobeOutput(side);flashChannels[side].set(channels);
-      const rgb=channels.slice(0,3).map((v,i)=>Math.round(255*(1-Math.exp(-5*(v+channels[3]*whiteTones[state.whiteTone][i])))));
+      const x=side===0?53:W-53,y=76;flashChannels[side].set(channels);
       if(rgb.some(v=>v>0)){
         ctx.save();ctx.globalCompositeOperation='screen';
-        const glow=ctx.createRadialGradient(x,y,2,x,y,76);
-        glow.addColorStop(0,`rgba(${rgb.join(',')},.75)`);glow.addColorStop(.3,`rgba(${rgb.join(',')},.18)`);glow.addColorStop(1,'rgba(0,0,0,0)');
-        ctx.fillStyle=glow;ctx.fillRect(x-76,y-76,152,152);
-        ctx.shadowColor=`rgb(${rgb.join(',')})`;ctx.shadowBlur=17;ctx.fillStyle=`rgb(${rgb.join(',')})`;
-        ctx.fillRect(x-12,y-23,24,46);ctx.shadowBlur=0;
-        ctx.fillStyle='rgba(0,0,0,.3)';for(let row=1;row<6;row++)ctx.fillRect(x-12,y-23+row*7.6,24,1);
+        // Broad glare is generated only by a live high-energy flash, never by ambient light.
+        if(hot>0){
+          const scatter=ctx.createRadialGradient(x,y,0,x,y,150+hot*440);
+          scatter.addColorStop(0,`rgba(${rgb.join(',')},${hot*.50})`);
+          scatter.addColorStop(.35,`rgba(${rgb.join(',')},${hot*.18})`);
+          scatter.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=scatter;ctx.fillRect(0,0,W,H);
+        }
+        const radius=70+hot*170,glow=ctx.createRadialGradient(x,y,2,x,y,radius);
+        glow.addColorStop(0,`rgba(${rgb.join(',')},.95)`);glow.addColorStop(.22,`rgba(${rgb.join(',')},.55)`);
+        glow.addColorStop(.55,`rgba(${rgb.join(',')},.14)`);glow.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+        if(hot>.1){
+          const reach=80+hot*220,flare=ctx.createLinearGradient(x-reach,0,x+reach,0);
+          flare.addColorStop(0,'rgba(0,0,0,0)');flare.addColorStop(.5,`rgba(${rgb.join(',')},${hot*.8})`);flare.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=flare;ctx.fillRect(x-reach,y-1-hot,reach*2,2+hot*2);
+        }
+        ctx.shadowColor=`rgb(${rgb.join(',')})`;ctx.shadowBlur=24+hot*35;ctx.fillStyle=`rgb(${rgb.join(',')})`;
+        ctx.fillRect(x-16-hot*6,y-10-hot*4,32+hot*12,20+hot*8);ctx.shadowBlur=0;
         ctx.restore();
       }
-      ctx.fillStyle='#526077';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';ctx.fillText(side===0?'FLASH L':'FLASH R',x,y+53);
+      ctx.fillStyle='#526077';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';ctx.fillText(side===0?'FLASH L':'FLASH R',x,y+44);
     }
   }
   function updateStats(){
@@ -617,7 +633,7 @@
     $('barRead').textContent=String((bars%(state.sceneBars*scenes.length))+1).padStart(2,'0')+' / '+(Math.floor(state.beat)%state.meter+1);
     Array.from($('beatMeter').children).forEach((dot,i)=>dot.classList.toggle('active',Math.floor(state.beat)%state.meter===i));
     $('kickRead').textContent=state.kickMode==='off'?'Kick automático desligado':`Kick · ${state.meter}/4 · ${Math.round(state.kickDepth*100)}%`;
-    $('flashRead').textContent=state.strobes?`2 flashes · ${{drop:'só no drop',beat:'batidas + drop',bar:'primeiro tempo'}[state.strobeMode]}`:'Flashes desligados';
+    $('flashRead').textContent=state.strobes?`2 flashes superiores · ${{drop:'só no drop',beat:'batidas + drop',bar:'primeiro tempo'}[state.strobeMode]}`:'Flashes desligados';
     $('dropRead').textContent=dropRun.pending?`Drop ${dropNames[dropRun.pending.style]} armado · entra em ${Math.max(0,dropRun.pending.startBeat-state.beat).toFixed(1)} beats${state.running?'':' · retome para iniciar'}.`:dropRun.active?`Drop ${dropNames[dropRun.active.descriptor.style]} · ${Math.ceil((dropRun.active.descriptor.endBeat-state.beat)/state.meter)} compassos restantes · ${dropRun.active.descriptor.rate} passos/beat.`:'Drop pronto para entrar no próximo compasso.';
     const target=targetDescriptor(),tr=playback.transition;
     $('sceneRead').textContent=target.kind==='organic'?'Orgânico':descriptorName(target);
