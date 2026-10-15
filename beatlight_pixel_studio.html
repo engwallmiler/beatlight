@@ -30,6 +30,13 @@
     .white-controls .hint { margin-bottom:0; }
     .flow-status { margin-top:12px; padding:12px; background:#0b1421; border:1px solid #283b51; border-radius:9px; }
     .flow-status p { margin:0 0 8px; color:#b7cce2; font-size:12px; line-height:1.5; }
+    .beat-meter { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:12px; color:#99b3cf; font-size:11px; }
+    .beat-meter i { display:block; width:12px; height:12px; border-radius:50%; background:#1d2d40; border:1px solid #39506c; }
+    .beat-meter i.active { background:#59bfff; box-shadow:0 0 12px #59bfff88; }
+    .beat-meter i.downbeat { border-color:#ff9062; }
+    .beat-meter i.downbeat.active { background:#ff9062; box-shadow:0 0 14px #ff906288; }
+    .drop-status { color:#ffc9a7; }
+    input[type=color] { width:100%; height:36px; padding:3px; border:1px solid #354761; border-radius:8px; background:#17253a; cursor:pointer; }
     progress { display:block; width:100%; height:5px; border:0; border-radius:5px; accent-color:#70b7f4; }
     progress::-webkit-progress-bar { background:#24354a; border-radius:5px; }
     progress::-webkit-progress-value { background:#70b7f4; border-radius:5px; }
@@ -84,6 +91,7 @@
     <noscript><p class="notice">Ative o JavaScript no navegador para executar a demonstração.</p></noscript>
     <canvas id="stage" width="1200" height="560" aria-label="Palco virtual de seis colunas de LED animadas"></canvas>
     <div class="stage-meta"><span><strong>600 LEDs / barra</strong> · 200 pixels · 3 LEDs por pixel · <strong id="colorModeRead">RGB</strong></span><span id="totalRead">6 barras · 3.600 LEDs · 1.200 pixels</span></div>
+    <div class="beat-meter"><span>COMPASSO</span><span id="beatMeter" style="display:flex;gap:8px" aria-label="Batidas do compasso"></span><span id="kickRead">Kick automático</span><span id="flashRead">2 flashes laterais · só no drop</span></div>
     <div class="status-grid">
       <div class="stat"><div class="stat-label">BPM simulado</div><div class="stat-value" id="bpmRead">130</div></div>
       <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
@@ -98,7 +106,18 @@
       <div class="button-grid" id="modeButtons"></div>
       <p class="hint" id="description">Uma apresentação com vinte cenas, sincronizadas por compassos, com transições suaves.</p>
       <div class="flow-status"><p id="flowRead">Preparando a primeira combinação…</p><progress id="morphProgress" max="1" value="0" aria-label="Progresso da transição"></progress></div>
-      <div class="button-row"><button id="kickBtn">Kick</button><button id="clapBtn">Clap</button><button id="dropBtn">Drop</button><button id="nextBtn">Próxima cena →</button></div>
+      <div class="button-row"><button id="kickBtn">Kick</button><button id="clapBtn">Clap</button><button id="dropBtn">⚡ Armar drop</button><button id="nextBtn">Próxima cena →</button></div>
+      <p class="hint drop-status" id="dropRead" role="status">Drop pronto para entrar no próximo compasso.</p>
+      <fieldset class="white-controls">
+        <legend>Sequências de drop</legend>
+        <div class="select-row">
+          <div><label for="dropStyle">Sequência</label><select id="dropStyle"><option value="impact">Impacto · pulsos e explosões</option><option value="turbo">Turbo · perseguições rápidas</option><option value="prism">Prisma · blocos de cor</option></select></div>
+          <div><label for="dropBars">Duração</label><select id="dropBars"><option value="4">4 compassos</option><option value="8" selected>8 compassos</option><option value="16">16 compassos</option></select></div>
+          <div><label for="dropRate">Passos por beat</label><select id="dropRate"><option value="1">1 · marcado</option><option value="2" selected>2 · rápido</option><option value="4">4 · intenso</option></select></div>
+        </div>
+        <div class="ctrl"><label for="dropEnergy">Energia</label><input id="dropEnergy" type="range" min="0" max="100" value="90"><output id="dropEnergyValue">90%</output></div>
+        <p class="hint">Arme com Drop ou D. A sequência entra no primeiro tempo do próximo compasso e retorna ao modo anterior. Clique novamente para cancelar ou encerrar.</p>
+      </fieldset>
       <div class="button-row"><button id="newMixBtn">✦ Nova combinação orgânica</button></div>
       <div class="timeline">
         <h2>Timeline automática</h2>
@@ -110,6 +129,11 @@
     <section class="panel">
       <h2>Controles da demonstração</h2>
       <div class="ctrl"><label for="bpm">BPM</label><input id="bpm" type="range" min="90" max="165" value="130"><output id="bpmValue">130</output></div>
+      <div class="select-row">
+        <div><label for="meter">Compasso</label><select id="meter"><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/4</option></select></div>
+        <div><label for="kickMode">Kick automático</label><select id="kickMode"><option value="beat">Todo beat · acento no 1</option><option value="bar">Só primeiro tempo</option><option value="off">Desligado</option></select></div>
+      </div>
+      <div class="ctrl"><label for="kickDepth">Força do kick</label><input id="kickDepth" type="range" min="0" max="100" value="75"><output id="kickDepthValue">75%</output></div>
       <div class="ctrl"><label for="brightness">Brilho</label><input id="brightness" type="range" min="0" max="100" value="80"><output id="brightnessValue">80%</output></div>
       <div class="ctrl"><label for="speed">Velocidade</label><input id="speed" type="range" min="25" max="200" value="100"><output id="speedValue">100%</output></div>
       <div class="ctrl"><label for="trail">Rastro</label><input id="trail" type="range" min="0" max="100" value="44"><output id="trailValue">44%</output></div>
@@ -122,7 +146,9 @@
       <p class="hint">Transições longas se ajustam ao intervalo entre cenas. Ao pausar, a animação congela; escolher outra cena pausada mostra uma prévia imediata.</p>
       <div class="select-row">
         <div><label for="colorMode">Tipo de LED</label><select id="colorMode"><option value="rgb">RGB · três canais</option><option value="rgbw">RGBW · branco dedicado</option></select></div>
-        <div><label for="palette">Paleta</label><select id="palette"><option value="deep">Azul e violeta</option><option value="fire">Âmbar e vermelho</option><option value="ice">Ciano e branco</option><option value="acid">Verde ácido</option><option value="mono">Branco frio</option></select></div>
+        <div><label for="palette">Paleta</label><select id="palette"><option value="deep">Azul e violeta</option><option value="fire">Âmbar e vermelho</option><option value="ice">Ciano e branco</option><option value="acid">Verde ácido</option><option value="mono">Branco frio</option><option value="red">Vermelho intenso</option><option value="green">Verde puro</option><option value="blue">Azul elétrico</option><option value="magenta">Magenta intenso</option><option value="cyan">Ciano laser</option><option value="amber">Âmbar vivo</option><option value="primaries">RGB primárias</option><option value="neon">Neon · rosa, ciano e lima</option><option value="sunset">Pôr do sol · vermelho e rosa</option><option value="ocean">Oceano · azul, verde e ciano</option></select></div>
+        <div><label for="colorBehavior">Comportamento de cor</label><select id="colorBehavior"><option value="scene">Cores do efeito / paleta</option><option value="spectrum">Espectro RGB contínuo</option><option value="beat">Trocar cor a cada beat</option><option value="bar">Trocar cor por compasso</option><option value="solid">Cor personalizada fixa</option></select></div>
+        <div><label for="solidColor">Cor personalizada</label><input id="solidColor" type="color" value="#ff0000" disabled></div>
         <div><label for="sceneBars">Compassos por cena</label><select id="sceneBars"><option value="2">2 compassos</option><option value="4" selected>4 compassos</option><option value="8">8 compassos</option><option value="16">16 compassos</option></select></div>
         <div><label for="columns">Colunas</label><select id="columns"><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select></div>
         <div><label>Resolução por barra</label><div class="spec">200 pixels × 3 LEDs = 600 LEDs</div></div>
@@ -133,9 +159,19 @@
         <label for="whiteTone">Tonalidade do branco</label><select id="whiteTone"><option value="warm">Quente</option><option value="neutral" selected>Neutro</option><option value="cool">Frio</option></select>
         <p class="hint">0%: apenas RGB. 100%: apenas o canal branco. A mistura acompanha os pixels acesos, sem iluminar os apagados.</p>
       </fieldset>
-      <p class="hint">Arco-íris e Chamas usam cores próprias. Os demais efeitos seguem a paleta selecionada.</p>
+      <p class="hint">Em “Cores do efeito”, Arco-íris e Chamas usam cores próprias. Os outros comportamentos substituem essas cores. Para máxima saturação, use RGB ou Mistura W em 0%.</p>
+      <fieldset class="white-controls">
+        <legend>Flashes laterais · 1 de cada lado</legend>
+        <button id="strobeToggleBtn" type="button" aria-pressed="true">Flashes: ligados</button>
+        <div class="select-row">
+          <div><label for="strobeMode">Participação</label><select id="strobeMode"><option value="drop">Só durante o drop</option><option value="beat">Batidas + drop</option><option value="bar">Primeiro tempo do compasso</option></select></div>
+          <div><label for="strobeColor">Luz do flash</label><select id="strobeColor"><option value="rgbw">RGBW · cor + branco</option><option value="rgb">RGB · cor saturada</option><option value="white">Somente branco</option></select></div>
+        </div>
+        <div class="ctrl"><label for="strobeLevel">Intensidade</label><input id="strobeLevel" type="range" min="0" max="100" value="70"><output id="strobeLevelValue">70%</output></div>
+        <p class="hint">Os dois flashes acompanham o mesmo relógio das mangueiras. Desligar interrompe a emissão imediatamente, inclusive no drop.</p>
+      </fieldset>
       <div class="button-row"><button id="restartBtn">↺ Reiniciar apresentação</button><button id="fullscreenBtn">⛶ Tela cheia</button></div>
-      <p class="hint">O BPM gera batidas internamente. Kick, Clap e Drop adicionam acentos visuais; não é necessário carregar música.</p>
+      <p class="hint">O BPM gera batidas internamente. Kick e Clap adicionam acentos manuais; Drop arma uma sequência. Não é necessário carregar música.</p>
       <p class="hint">Atalhos: <strong>Espaço</strong> pausa/reproduz; <strong>K</strong> dispara kick; <strong>C</strong> clap; <strong>D</strong> drop; <strong>N</strong> próxima cena.</p>
     </section>
   </div>
@@ -193,9 +229,22 @@
     fire:[[218,40,31],[248,118,31],[255,199,74]],
     ice:[[14,115,192],[41,211,229],[220,246,255]],
     acid:[[14,112,71],[80,211,52],[225,250,55]],
-    mono:[[74,90,126],[165,195,225],[245,248,255]]
+    mono:[[74,90,126],[165,195,225],[245,248,255]],
+    red:[[255,0,0],[255,0,0],[255,0,0]],
+    green:[[0,255,0],[0,255,0],[0,255,0]],
+    blue:[[0,0,255],[0,0,255],[0,0,255]],
+    magenta:[[255,0,190],[255,0,255],[190,0,255]],
+    cyan:[[0,255,255],[0,255,255],[0,255,255]],
+    amber:[[255,45,0],[255,100,0],[255,160,0]],
+    primaries:[[255,0,0],[0,255,0],[0,0,255]],
+    neon:[[255,0,150],[0,245,255],[145,255,0]],
+    sunset:[[255,0,0],[255,40,0],[255,0,130]],
+    ocean:[[0,20,255],[0,255,175],[0,220,255]]
   };
-  const state = {running:true,mode:'organic',bpm:130,brightness:.8,speed:1,trail:.44,transition:4,variation:.65,palette:'deep',colorMode:'rgb',white:.35,whiteTone:'neutral',columns:6,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0,motion:0};
+  const state = {running:true,mode:'organic',bpm:130,meter:4,kickMode:'beat',kickDepth:.75,brightness:.8,speed:1,trail:.44,transition:4,variation:.65,palette:'deep',colorBehavior:'scene',solidColor:[255,0,0],colorMode:'rgb',white:.35,whiteTone:'neutral',columns:6,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0,motion:0,dropStyle:'impact',dropBars:8,dropRate:2,dropEnergy:.9,strobes:true,strobeMode:'drop',strobeColor:'rgbw',strobeLevel:.7};
+  const dropNames={impact:'Impacto',turbo:'Turbo',prism:'Prisma'};
+  const dropRun={pending:null,active:null};
+  const flashChannels=[new Float32Array(4),new Float32Array(4)];
   const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
   const smooth = x => {x=clamp(x);return x*x*(3-2*x)};
   const smoother = x => {x=clamp(x);return x*x*x*(x*(x*6-15)+10);};
@@ -205,12 +254,12 @@
   const fract = x => x-Math.floor(x);
   const hash = n => fract(Math.sin(n*127.1+78.233)*43758.5453);
   const mix = (a,b,t)=>a+(b-a)*t;
-  const sceneBeats = () => state.sceneBars*4;
+  const sceneBeats = () => state.sceneBars*state.meter;
   const organicPool=['ambient','wave','helix','rain','comet','scanner','sparkle','meteor','bounce','ripple','aurora'];
   let organicBag=[],lastOrganicId='';
   const playback={current:null,transition:null,nextBeat:16};
   const sceneDescriptor=id=>({kind:'scene',id});
-  const descriptorName=d=>d.kind==='organic'?`${scenes.find(s=>s.id===d.a).name} + ${scenes.find(s=>s.id===d.b).name}`:d.kind==='snapshot'?'Mistura atual':scenes.find(s=>s.id===d.id).name;
+  const descriptorName=d=>d.kind==='organic'?`${scenes.find(s=>s.id===d.a).name} + ${scenes.find(s=>s.id===d.b).name}`:d.kind==='dropseq'?`Drop · ${dropNames[d.style]}`:d.kind==='snapshot'?'Mistura atual':scenes.find(s=>s.id===d.id).name;
   const targetDescriptor=()=>playback.transition?.to||playback.current;
   function noise(t,seed){const i=Math.floor(t);return mix(hash(i+seed),hash(i+1+seed),smoother(fract(t)));}
   function organicDescriptor(){
@@ -238,11 +287,14 @@
     playback.nextBeat=state.beat+sceneBeats();
   }
   function selectMode(mode,id){
+    if(mode==='dropseq'){toggleDrop();return;}
+    dropRun.pending=dropRun.active=null;
     state.mode=mode;
     beginTransition(mode==='organic'?organicDescriptor():sceneDescriptor(id||(mode==='auto'?'ambient':mode)));
     refreshButtons();
   }
   function advanceScene(){
+    if(dropRun.active){finishDrop();return;}
     if(state.mode==='organic')beginTransition(organicDescriptor());
     else {
       const target=targetDescriptor(),index=scenes.findIndex(s=>s.id===target.id);
@@ -251,27 +303,70 @@
     refreshButtons();
   }
   function updatePlayback(){
+    if(dropRun.pending&&state.beat>=dropRun.pending.startBeat){
+      const queued=dropRun.pending;
+      const descriptor={kind:'dropseq',style:queued.style,startBeat:queued.startBeat,endBeat:queued.startBeat+queued.bars*state.meter,meter:state.meter,rate:queued.rate};
+      dropRun.active={descriptor,returnMode:state.mode,returnPattern:targetDescriptor()};dropRun.pending=null;
+      state.mode='dropseq';playback.current=descriptor;playback.transition=null;refreshButtons();
+    }
+    if(dropRun.active&&state.beat>=dropRun.active.descriptor.endBeat)finishDrop();
     if(playback.transition&&transitionFraction()>=1){playback.current=playback.transition.to;playback.transition=null;}
     if((state.mode==='auto'||state.mode==='organic')&&!playback.transition&&state.beat>=playback.nextBeat)advanceScene();
+  }
+  function toggleDrop(){
+    if(dropRun.pending)dropRun.pending=null;
+    else if(dropRun.active){finishDrop();return;}
+    else dropRun.pending={startBeat:(Math.floor(state.beat/state.meter)+1)*state.meter,style:state.dropStyle,bars:state.dropBars,rate:state.dropRate};
+    refreshButtons();
+  }
+  function finishDrop(){
+    const previous=dropRun.active;if(!previous)return;
+    dropRun.active=null;state.mode=previous.returnMode;
+    beginTransition(previous.returnPattern);refreshButtons();
+  }
+  function kickEnvelope(){
+    if(state.kickMode==='off')return 0;
+    const position=state.beat%state.meter;
+    const age=state.kickMode==='bar'?position:fract(state.beat);
+    if(age>.7)return 0;
+    const accent=Math.floor(position)===0?1:.78;
+    return accent*Math.exp(-age*9);
+  }
+  function makeBeatMeter(){
+    $('beatMeter').replaceChildren();
+    for(let i=0;i<state.meter;i++){const dot=document.createElement('i');dot.classList.toggle('downbeat',i===0);dot.title=`Tempo ${i+1}`;$('beatMeter').appendChild(dot);}
   }
   function paletteAt(t){const p=paletteMap[state.palette];const z=clamp(t)*2,k=Math.min(1,Math.floor(z)),f=smooth(z-k);return p[k].map((v,i)=>mix(v,p[k+1][i],f));}
   function audioEvent(type){state[type]=1;}
   function makeButtons(){
     const parent=$('modeButtons');
-    [{id:'organic',name:'✦ ORGÂNICO'},{id:'auto',name:'AUTO SHOW'},...scenes].forEach(s=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.mode=s.id;b.onclick=()=>selectMode(s.id);parent.appendChild(b);});
+    [{id:'organic',name:'✦ ORGÂNICO'},{id:'auto',name:'AUTO SHOW'},{id:'dropseq',name:'⚡ DROP SHOW'},...scenes].forEach(s=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.mode=s.id;b.onclick=()=>selectMode(s.id);parent.appendChild(b);});
     const tl=$('timeline');
     scenes.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML=`<strong>${String(i+1).padStart(2,'0')}</strong><span>${s.name}</span>`;b.title='Ir para '+s.name;b.onclick=()=>selectMode('auto',s.id);tl.appendChild(b);});
     refreshButtons();
   }
   function refreshButtons(){
-    document.querySelectorAll('#modeButtons button').forEach(b=>{b.classList.toggle('active',b.dataset.mode===state.mode);b.setAttribute('aria-pressed',b.dataset.mode===state.mode);});
+    document.querySelectorAll('#modeButtons button').forEach(b=>{const active=b.dataset.mode===state.mode||(b.dataset.mode==='dropseq'&&!!dropRun.pending);b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);});
     $('organicControls').disabled=state.mode!=='organic';
-    $('description').textContent=state.mode==='organic'?'Combinações aleatórias de dois padrões, com variações contínuas e transições suaves.':state.mode==='auto'?`${scenes.length} cenas em sequência, com sobreposição suave de luz e cor.`:scenes.find(s=>s.id===state.mode).desc;
+    $('description').textContent=state.mode==='dropseq'?'Sequência de alta energia: pulsos, perseguições, cruzamentos e rajadas sincronizados ao compasso.':state.mode==='organic'?'Combinações aleatórias de dois padrões, com variações contínuas e transições suaves.':state.mode==='auto'?`${scenes.length} cenas em sequência, com sobreposição suave de luz e cor.`:scenes.find(s=>s.id===state.mode).desc;
+    $('dropBtn').textContent=dropRun.pending?'Cancelar drop':dropRun.active?'Encerrar drop':'⚡ Armar drop';
+    $('meter').disabled=!!dropRun.active;
   }
   function bindRange(id,key,scale,suffix){const slider=$(id),val=$(id+'Value');slider.addEventListener('input',()=>{state[key]=+slider.value/scale;val.textContent=slider.value+suffix;});}
   bindRange('bpm','bpm',1,'');bindRange('brightness','brightness',100,'%');bindRange('speed','speed',100,'%');bindRange('trail','trail',100,'%');
   bindRange('white','white',100,'%');
   bindRange('transition','transition',1,' s');bindRange('variation','variation',100,'%');
+  bindRange('kickDepth','kickDepth',100,'%');bindRange('dropEnergy','dropEnergy',100,'%');bindRange('strobeLevel','strobeLevel',100,'%');
+  ['kickMode','dropStyle','strobeMode','strobeColor'].forEach(id=>{$(id).onchange=e=>{state[id]=e.target.value;};});
+  ['dropBars','dropRate'].forEach(id=>{$(id).onchange=e=>{state[id]=+e.target.value;};});
+  $('meter').onchange=e=>{
+    state.meter=+e.target.value;playback.nextBeat=state.beat+sceneBeats();
+    if(dropRun.pending)dropRun.pending.startBeat=(Math.floor(state.beat/state.meter)+1)*state.meter;
+    makeBeatMeter();
+  };
+  $('colorBehavior').onchange=e=>{state.colorBehavior=e.target.value;$('solidColor').disabled=state.colorBehavior!=='solid';};
+  $('solidColor').oninput=e=>{state.solidColor=[1,3,5].map(i=>parseInt(e.target.value.slice(i,i+2),16));};
+  $('strobeToggleBtn').onclick=()=>{state.strobes=!state.strobes;$('strobeToggleBtn').textContent=state.strobes?'Flashes: ligados':'Flashes: desligados';$('strobeToggleBtn').setAttribute('aria-pressed',state.strobes);};
   $('colorMode').onchange=e=>{state.colorMode=e.target.value;$('whiteControls').disabled=state.colorMode!=='rgbw';$('colorModeRead').textContent=state.colorMode.toUpperCase();};
   $('whiteTone').onchange=e=>{state.whiteTone=e.target.value;};
   $('palette').onchange=e=>{state.palette=e.target.value};
@@ -282,12 +377,14 @@
     canvas.setAttribute('aria-label',`Palco virtual com ${state.columns} mangueiras animadas, cada uma com 600 LEDs em 200 pixels`);
   }
   $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;playback.nextBeat=state.beat+sceneBeats();$('sceneBarsText').textContent=state.sceneBars};
-  $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=()=>audioEvent('drop');
+  $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=toggleDrop;
   function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').classList.toggle('paused',!state.running);}
   $('playBtn').onclick=togglePlay;
-  $('nextBtn').onclick=advanceScene;
+  $('nextBtn').onclick=()=>{dropRun.pending=null;advanceScene();};
   $('newMixBtn').onclick=()=>selectMode('organic');
   $('restartBtn').onclick=()=>{
+    if(dropRun.active)state.mode=dropRun.active.returnMode;
+    dropRun.pending=dropRun.active=null;
     state.beat=state.elapsed=state.motion=state.kick=state.clap=state.drop=0;
     playback.transition=null;playback.nextBeat=sceneBeats();
     playback.current=state.mode==='organic'?organicDescriptor():sceneDescriptor(state.mode==='auto'?'ambient':state.mode);
@@ -303,7 +400,7 @@
       $('startupNotice').hidden=false;
     }
   };
-  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k===' '){e.preventDefault();togglePlay();}else if(k==='k')audioEvent('kick');else if(k==='c')audioEvent('clap');else if(k==='d')audioEvent('drop');else if(k==='n')$('nextBtn').click();});
+  document.addEventListener('keydown',e=>{if(e.repeat||['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k===' '){e.preventDefault();togglePlay();}else if(k==='k')audioEvent('kick');else if(k==='c')audioEvent('clap');else if(k==='d')toggleDrop();else if(k==='n')$('nextBtn').click();});
   function effect(id,c,u,n,t,beatFraction,phase=state.motion,trail=state.trail){
     const sc=Math.max(1,n-1), x=c/sc;
     const wrapDistance=(a,b)=>{const d=Math.abs(fract(a)-fract(b));return Math.min(d,1-d)};
@@ -368,7 +465,12 @@
     }
   }
   function sceneColor(id,c,u,n,phase=state.motion,organicShift=null){
-    if(id==='rainbow'){
+    if(state.colorBehavior==='solid')return state.solidColor;
+    if(state.colorBehavior==='beat'||state.colorBehavior==='bar'){
+      const step=Math.floor(state.beat/(state.colorBehavior==='bar'?state.meter:1));
+      return paletteMap[state.palette][step%3];
+    }
+    if(id==='rainbow'||state.colorBehavior==='spectrum'){
       const hue=fract(u*.7+c/n*.5-phase*.035);
       return [0,2/3,1/3].map(offset=>255*clamp(Math.abs(fract(hue+offset)*6-3)-1));
     }
@@ -387,6 +489,7 @@
       const row=Math.round(clamp(u)*(PIXELS_PER_STRIP-1)),a=(left*PIXELS_PER_STRIP+row)*4,b=(right*PIXELS_PER_STRIP+row)*4;
       return [0,1,2,3].map(i=>mix(d.data[a+i],d.data[b+i],column-left));
     }
+    if(d.kind==='dropseq')return sampleDrop(d,c,u,n);
     if(d.kind==='scene')return sampleScene(d.id,c,u,n);
     const t=state.elapsed,amount=state.variation,seed=d.seed;
     const drift=(noise(t*.045,seed)-.5)*amount*2;
@@ -399,6 +502,23 @@
     const blend=amount*(.22+.23*noise(t*.06,seed+153));
     return a.map((value,i)=>mix(value,b[i],blend));
   }
+  function dropSection(d){
+    const bar=Math.floor(Math.max(0,state.beat-d.startBeat)/d.meter)%4;
+    return ({impact:['slam','run','split','blast'],turbo:['run','split','run','blast'],prism:['split','blast','run','blast']})[d.style][bar];
+  }
+  function sampleDrop(d,c,u,n){
+    const t=Math.max(0,state.beat-d.startBeat),step=Math.floor(t*d.rate),f=fract(t*d.rate),pulse=Math.exp(-fract(t)*9);
+    const section=dropSection(d);let energy=0;
+    if(section==='slam')energy=pulse*(.75+.25*Math.sin(u*6+c)**2);
+    else if(section==='run'){
+      const lane=step%n,distance=(c-lane+n)%n;
+      energy=(distance===0?1:distance===1?.23:0)*(.32+.68*beam(u-fract(t*.7+c*.13),.22))*(.45+.55*Math.exp(-f*4));
+    } else if(section==='split')energy=(.5+.5*Math.sin(u*28+c*3-t*d.rate*6))**10*(.45+.55*pulse);
+    else energy=(Math.floor(u*10)+c+step)%3===0?Math.exp(-f*6):0;
+    const power=clamp((energy-.025)/.975)*state.dropEnergy;
+    const color=d.style==='prism'&&state.colorBehavior==='scene'?paletteAt(fract(c/n+step*.17+u*.12)):sceneColor('dropseq',c,u,n);
+    return [color[0]/255*power,color[1]/255*power,color[2]/255*power,power];
+  }
   function compositeSample(c,u,n){
     const tr=playback.transition;
     if(!tr)return sampleDescriptor(playback.current,c,u,n);
@@ -408,7 +528,8 @@
   function pixelValue(c,u,n){
     const sample=compositeSample(c,u,n),active=sample[3];
     // Accents and W only use the light actually present in the blended patterns.
-    const accent=1+state.kick*.8+state.clap*1.2*beam(u-.72,.22)+state.drop*2;
+    const groove=state.kickMode==='off'?1:1+state.kickDepth*(1.1*kickEnvelope()-.6);
+    const accent=groove+state.kick*.8+state.clap*1.2*beam(u-.72,.22)+state.drop*2;
     return {power:clamp(active*accent)*state.brightness,color:sample.slice(0,3).map(v=>active>0?v/active*255:0)};
   }
   function drawBackground(){
@@ -459,29 +580,67 @@
     ctx.globalAlpha=.18;ctx.filter='blur(9px)';ctx.drawImage(lightLayer,0,-bottom);
     ctx.restore();ctx.restore();
   }
+  function strobeOutput(side){
+    if(!state.strobes||state.strobeLevel===0||state.brightness===0||(state.strobeMode==='drop'&&!dropRun.active))return [0,0,0,0];
+    const drop=dropRun.active?.descriptor;
+    const barOnly=state.strobeMode==='bar';
+    const rate=barOnly?1/state.meter:drop&&drop.style!=='impact'?2:1;
+    const clock=state.beat*rate,tick=Math.floor(clock),age=fract(clock)/rate*60/state.bpm;
+    if(age>=.085)return [0,0,0,0];
+    const first=Math.abs((tick/rate)%state.meter)<1e-8;
+    const together=first||(drop&&dropSection(drop)==='blast'&&tick%4===0)||barOnly;
+    if(!together&&tick%2!==side)return [0,0,0,0];
+    const power=Math.exp(-age/.03)*state.strobeLevel*state.brightness;
+    const color=sceneColor('flash',side,.5,2);
+    const white=state.strobeColor==='white'?1:state.strobeColor==='rgb'?0:first?.85:.4;
+    return [color[0]/255*power*(1-white),color[1]/255*power*(1-white),color[2]/255*power*(1-white),power*white];
+  }
+  function drawStrobes(){
+    for(let side=0;side<2;side++){
+      const x=side===0?53:W-53,y=274,channels=strobeOutput(side);flashChannels[side].set(channels);
+      const rgb=channels.slice(0,3).map((v,i)=>Math.round(255*(1-Math.exp(-5*(v+channels[3]*whiteTones[state.whiteTone][i])))));
+      if(rgb.some(v=>v>0)){
+        ctx.save();ctx.globalCompositeOperation='screen';
+        const glow=ctx.createRadialGradient(x,y,2,x,y,76);
+        glow.addColorStop(0,`rgba(${rgb.join(',')},.75)`);glow.addColorStop(.3,`rgba(${rgb.join(',')},.18)`);glow.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=glow;ctx.fillRect(x-76,y-76,152,152);
+        ctx.shadowColor=`rgb(${rgb.join(',')})`;ctx.shadowBlur=17;ctx.fillStyle=`rgb(${rgb.join(',')})`;
+        ctx.fillRect(x-12,y-23,24,46);ctx.shadowBlur=0;
+        ctx.fillStyle='rgba(0,0,0,.3)';for(let row=1;row<6;row++)ctx.fillRect(x-12,y-23+row*7.6,24,1);
+        ctx.restore();
+      }
+      ctx.fillStyle='#526077';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';ctx.fillText(side===0?'FLASH L':'FLASH R',x,y+53);
+    }
+  }
   function updateStats(){
-    const bars=Math.floor(state.beat/4);$('bpmRead').textContent=state.bpm;
-    $('barRead').textContent=String((bars%(state.sceneBars*scenes.length))+1).padStart(2,'0')+' / '+(Math.floor(state.beat)%4+1);
+    const bars=Math.floor(state.beat/state.meter);$('bpmRead').textContent=state.bpm;
+    $('barRead').textContent=String((bars%(state.sceneBars*scenes.length))+1).padStart(2,'0')+' / '+(Math.floor(state.beat)%state.meter+1);
+    Array.from($('beatMeter').children).forEach((dot,i)=>dot.classList.toggle('active',Math.floor(state.beat)%state.meter===i));
+    $('kickRead').textContent=state.kickMode==='off'?'Kick automático desligado':`Kick · ${state.meter}/4 · ${Math.round(state.kickDepth*100)}%`;
+    $('flashRead').textContent=state.strobes?`2 flashes · ${{drop:'só no drop',beat:'batidas + drop',bar:'primeiro tempo'}[state.strobeMode]}`:'Flashes desligados';
+    $('dropRead').textContent=dropRun.pending?`Drop ${dropNames[dropRun.pending.style]} armado · entra em ${Math.max(0,dropRun.pending.startBeat-state.beat).toFixed(1)} beats${state.running?'':' · retome para iniciar'}.`:dropRun.active?`Drop ${dropNames[dropRun.active.descriptor.style]} · ${Math.ceil((dropRun.active.descriptor.endBeat-state.beat)/state.meter)} compassos restantes · ${dropRun.active.descriptor.rate} passos/beat.`:'Drop pronto para entrar no próximo compasso.';
     const target=targetDescriptor(),tr=playback.transition;
     $('sceneRead').textContent=target.kind==='organic'?'Orgânico':descriptorName(target);
-    $('nextRead').textContent=tr?`${Math.max(0,tr.duration-(state.elapsed-tr.start)).toFixed(1)} s de fusão`:(state.mode==='auto'||state.mode==='organic')?`${(Math.max(0,playback.nextBeat-state.beat)/4).toFixed(1)} compassos`:'Manual';
+    $('nextRead').textContent=dropRun.active?`${Math.max(0,(dropRun.active.descriptor.endBeat-state.beat)/state.meter).toFixed(1)} até retorno`:tr?`${Math.max(0,tr.duration-(state.elapsed-tr.start)).toFixed(1)} s de fusão`:(state.mode==='auto'||state.mode==='organic')?`${(Math.max(0,playback.nextBeat-state.beat)/state.meter).toFixed(1)} compassos`:'Manual';
     $('flowRead').textContent=tr?`${descriptorName(tr.from)} → ${descriptorName(tr.to)}`:`${descriptorName(target)} · ${state.mode==='organic'?'evolução contínua':'padrão atual'}`;
     $('morphProgress').value=tr?transitionFraction():0;
     Array.from($('timeline').children).forEach((button,i)=>button.classList.toggle('active',state.mode==='auto'&&scenes[i].id===target.id));
   }
   let previousTime=performance.now(),lastStats=0;
   document.addEventListener('visibilitychange',()=>{previousTime=performance.now();});
+  function advanceClock(dt){
+    if(!state.running)return;
+    state.beat+=dt*state.bpm/60;state.elapsed+=dt;state.motion+=dt*state.bpm/60*state.speed;
+    state.kick=Math.max(0,state.kick-dt*5.0);
+    state.clap=Math.max(0,state.clap-dt*6.5);
+    state.drop=Math.max(0,state.drop-dt*1.8);
+    updatePlayback();
+  }
   function tick(now){
     const dt=Math.min(.08,(now-previousTime)/1000);previousTime=now;
-    if(state.running){
-      state.beat+=dt*state.bpm/60;state.elapsed+=dt;state.motion+=dt*state.bpm/60*state.speed;
-      state.kick=Math.max(0,state.kick-dt*5.0);
-      state.clap=Math.max(0,state.clap-dt*6.5);
-      state.drop=Math.max(0,state.drop-dt*1.8);
-      updatePlayback();
-    }
+    advanceClock(dt);
     try {
-      drawBackground();drawColumns();
+      drawBackground();drawColumns();drawStrobes();
       if(now-lastStats>90){updateStats();lastStats=now;}
     } catch(error) {
       console.error('Falha no simulador de LEDs:',error);
@@ -493,7 +652,7 @@
     requestAnimationFrame(tick);
   }
   playback.current=organicDescriptor();
-  makeButtons();updateStripInfo();updateStats();
+  makeButtons();makeBeatMeter();updateStripInfo();updateStats();
   $('startupNotice').hidden=true;$('liveText').textContent='EXECUTANDO';
   requestAnimationFrame(tick);
 })();
