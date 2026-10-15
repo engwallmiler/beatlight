@@ -22,7 +22,14 @@
     .stage-title { font-size:12px; letter-spacing:1.5px; font-weight:800; color:#a6bbd8; }
     .live { font-size:11px; color:#7fdbbb; display:flex; align-items:center; gap:7px; }
     .live-dot { background:#51ddac; width:7px; height:7px; border-radius:50%; box-shadow:0 0 9px #51ddac; }
-    canvas { width:100%; aspect-ratio:1200/560; background:#050a14; border-radius:10px; display:block; }
+    canvas { width:100%; aspect-ratio:1200/560; background:#020305; border-radius:10px; display:block; }
+    canvas:fullscreen { width:100vw; height:100vh; object-fit:contain; border-radius:0; background:#020305; }
+    .stage-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:12px 5px 0; color:#899bb3; font-size:11px; }
+    .stage-meta strong { color:#c3d8ed; font-weight:600; }
+    .spec { border:1px solid #354761; border-radius:8px; padding:9px; font-size:12px; color:#dceaff; background:#101c2d; }
+    .notice { padding:12px; border:1px solid #956b35; border-radius:8px; color:#ffe0af; background:#302315; font-size:13px; line-height:1.5; }
+    .notice[hidden] { display:none; }
+    .live-dot.paused { background:#e0a74e; box-shadow:0 0 9px #e0a74e; }
     .status-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
     .stat { padding:11px 13px; border:1px solid #25354c; border-radius:10px; background:#0c1422; }
     .stat-label { font-size:10px; color:#8b9db8; text-transform:uppercase; letter-spacing:1.2px; }
@@ -58,18 +65,21 @@
 <body>
 <main class="app">
   <header class="topbar">
-    <div class="brand"><div class="mark">B</div><div><h1>BEATLIGHT <span style="color:#70b7f4">PIXEL STUDIO</span></h1><div class="sub">Demonstração de iluminação por colunas · motor visual independente de hardware</div></div></div>
-    <span class="pill">SIMULAÇÃO LOCAL · SEM DMX</span>
+    <div class="brand"><div class="mark">B</div><div><h1>BEATLIGHT <span style="color:#70b7f4">PIXEL STUDIO</span></h1><div class="sub">Mangueiras de LED no escuro · demonstração com ritmo simulado</div></div></div>
+    <span class="pill">DEMO AUTÔNOMA · SEM ÁUDIO</span>
   </header>
 
   <section class="panel stage-panel">
-    <div class="stage-top"><span class="stage-title">STAGE PREVIEW · SEIS COLUNAS</span><span class="live"><span class="live-dot" id="liveDot"></span><span id="liveText">EXECUTANDO</span></span></div>
+    <div class="stage-top"><span class="stage-title" id="stageTitle">PALCO · 6 MANGUEIRAS</span><span class="live"><span class="live-dot" id="liveDot"></span><span id="liveText">INICIANDO</span></span></div>
+    <p id="startupNotice" class="notice" role="status">Se a animação não iniciar, abra este arquivo diretamente no Chrome, Edge ou Firefox. Prévias de HTML podem bloquear JavaScript.</p>
+    <noscript><p class="notice">Ative o JavaScript no navegador para executar a demonstração.</p></noscript>
     <canvas id="stage" width="1200" height="560" aria-label="Palco virtual de seis colunas de LED animadas"></canvas>
+    <div class="stage-meta"><span><strong>600 LEDs / barra</strong> · 200 pixels · 3 LEDs por pixel</span><span id="totalRead">6 barras · 3.600 LEDs · 1.200 pixels</span></div>
     <div class="status-grid">
-      <div class="stat"><div class="stat-label">BPM</div><div class="stat-value" id="bpmRead">130</div></div>
+      <div class="stat"><div class="stat-label">BPM simulado</div><div class="stat-value" id="bpmRead">130</div></div>
       <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
       <div class="stat"><div class="stat-label">Cena atual</div><div class="stat-value small" id="sceneRead">Atmosfera</div></div>
-      <div class="stat"><div class="stat-label">Próxima transição</div><div class="stat-value small" id="nextRead">8 compassos</div></div>
+      <div class="stat"><div class="stat-label">Próxima transição</div><div class="stat-value small" id="nextRead">4 compassos</div></div>
     </div>
   </section>
 
@@ -87,7 +97,7 @@
     </section>
 
     <section class="panel">
-      <h2>Parâmetros do Pixel Engine</h2>
+      <h2>Controles da demonstração</h2>
       <div class="ctrl"><label for="bpm">BPM</label><input id="bpm" type="range" min="90" max="165" value="130"><output id="bpmValue">130</output></div>
       <div class="ctrl"><label for="brightness">Brilho</label><input id="brightness" type="range" min="0" max="100" value="80"><output id="brightnessValue">80%</output></div>
       <div class="ctrl"><label for="speed">Velocidade</label><input id="speed" type="range" min="25" max="200" value="100"><output id="speedValue">100%</output></div>
@@ -96,13 +106,14 @@
         <div><label for="palette">Paleta</label><select id="palette"><option value="deep">Azul e violeta</option><option value="fire">Âmbar e vermelho</option><option value="ice">Ciano e branco</option><option value="acid">Verde ácido</option><option value="mono">Branco frio</option></select></div>
         <div><label for="sceneBars">Compassos por cena</label><select id="sceneBars"><option value="2">2 compassos</option><option value="4" selected>4 compassos</option><option value="8">8 compassos</option><option value="16">16 compassos</option></select></div>
         <div><label for="columns">Colunas</label><select id="columns"><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select></div>
-        <div><label for="density">Pixels por coluna</label><select id="density"><option value="50">50 pixels</option><option value="100" selected>100 pixels</option><option value="150">150 pixels</option><option value="300">300 pixels</option></select></div>
+        <div><label>Resolução por barra</label><div class="spec">200 pixels × 3 LEDs = 600 LEDs</div></div>
       </div>
       <div class="button-row"><button id="restartBtn">↺ Reiniciar apresentação</button><button id="fullscreenBtn">⛶ Tela cheia</button></div>
+      <p class="hint">O BPM gera batidas internamente. Kick, Clap e Drop adicionam acentos visuais; não é necessário carregar música.</p>
       <p class="hint">Atalhos: <strong>Espaço</strong> pausa/reproduz; <strong>K</strong> dispara kick; <strong>C</strong> clap; <strong>D</strong> drop; <strong>N</strong> próxima cena.</p>
     </section>
   </div>
-  <p class="foot">Demo visual autônoma: não captura áudio, não envia DDP/Art-Net e não controla LEDs físicos. As animações são calculadas por pixel e servem como base para integrar o Beat Tracker e o Pixel Output do BeatLight DMX.</p>
+  <p class="foot">Cada barra simula 600 LEDs agrupados em 200 pixels controláveis. Os três LEDs de cada pixel compartilham a mesma cor; o difusor suaviza a luz, como uma mangueira no escuro. Abra este HTML diretamente no navegador: a demonstração funciona offline, sem música, instalação ou hardware.</p>
 </main>
 <script>
 'use strict';
@@ -110,7 +121,24 @@
   const $ = id => document.getElementById(id);
   const canvas = $('stage');
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    $('startupNotice').textContent='Não foi possível iniciar o Canvas 2D. Abra o arquivo em um navegador com suporte a Canvas.';
+    $('liveText').textContent='INDISPONÍVEL';
+    return;
+  }
   const W = canvas.width, H = canvas.height;
+  const PIXELS_PER_STRIP = 200, LEDS_PER_PIXEL = 3;
+  const LEDS_PER_STRIP = PIXELS_PER_STRIP * LEDS_PER_PIXEL;
+  // One RGB value per addressable pixel; each value drives three physical LEDs.
+  const stripBuffers = Array.from({length:8}, () => new Uint8ClampedArray(PIXELS_PER_STRIP * 3));
+  const lightLayer = document.createElement('canvas');
+  lightLayer.width=W; lightLayer.height=H;
+  const lightCtx=lightLayer.getContext('2d');
+  const stripTexture=document.createElement('canvas');
+  stripTexture.width=9; stripTexture.height=LEDS_PER_STRIP;
+  const textureCtx=stripTexture.getContext('2d');
+  const texture=textureCtx.createImageData(9,LEDS_PER_STRIP);
+  const tubeProfile=[.10,.32,.65,.89,1,.89,.65,.32,.10];
   const scenes = [
     {id:'ambient',name:'Atmosfera',desc:'Respiração azul/violeta com gradientes lentos e movimentos suaves.'},
     {id:'pulse',name:'Kick Pulse',desc:'Colunas inteiras pulsam com o kick e decaem musicalmente.'},
@@ -128,7 +156,7 @@
     acid:[[14,112,71],[80,211,52],[225,250,55]],
     mono:[[74,90,126],[165,195,225],[245,248,255]]
   };
-  const state = {running:true,mode:'auto',bpm:130,brightness:.8,speed:1,trail:.44,palette:'deep',columns:6,pixels:100,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0};
+  const state = {running:true,mode:'auto',bpm:130,brightness:.8,speed:1,trail:.44,palette:'deep',columns:6,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0,motion:0};
   const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
   const smooth = x => {x=clamp(x);return x*x*(3-2*x)};
   const gaussian = (x,s) => Math.exp(-.5*(x/s)**2);
@@ -151,18 +179,31 @@
   function bindRange(id,key,scale,suffix){const slider=$(id),val=$(id+'Value');slider.addEventListener('input',()=>{state[key]=+slider.value/scale;val.textContent=slider.value+suffix;});}
   bindRange('bpm','bpm',1,'');bindRange('brightness','brightness',100,'%');bindRange('speed','speed',100,'%');bindRange('trail','trail',100,'%');
   $('palette').onchange=e=>{state.palette=e.target.value};
-  $('columns').onchange=e=>{state.columns=+e.target.value};
-  $('density').onchange=e=>{state.pixels=+e.target.value};
+  $('columns').onchange=e=>{state.columns=+e.target.value;updateStripInfo();};
+  function updateStripInfo(){
+    $('stageTitle').textContent=`PALCO · ${state.columns} MANGUEIRAS`;
+    $('totalRead').textContent=`${state.columns} barras · ${(state.columns*LEDS_PER_STRIP).toLocaleString('pt-BR')} LEDs · ${(state.columns*PIXELS_PER_STRIP).toLocaleString('pt-BR')} pixels`;
+    canvas.setAttribute('aria-label',`Palco virtual com ${state.columns} mangueiras animadas, cada uma com 600 LEDs em 200 pixels`);
+  }
   $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;state.beat=0;$('sceneBarsText').textContent=state.sceneBars};
   $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=()=>audioEvent('drop');
-  function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').style.background=state.running?'#51ddac':'#e0a74e';}
+  function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').classList.toggle('paused',!state.running);}
   $('playBtn').onclick=togglePlay;
   $('nextBtn').onclick=()=>{state.mode='auto';state.beat=(Math.floor(state.beat/sceneBeats())+1)*sceneBeats();audioEvent('drop');refreshButtons();};
-  $('restartBtn').onclick=()=>{state.beat=0;state.elapsed=0;state.mode='auto';state.kick=state.clap=state.drop=0;refreshButtons();};
-  $('fullscreenBtn').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else canvas.requestFullscreen?.();};
+  $('restartBtn').onclick=()=>{state.beat=0;state.elapsed=0;state.motion=0;state.mode='auto';state.kick=state.clap=state.drop=0;refreshButtons();};
+  $('fullscreenBtn').onclick=async()=>{
+    try {
+      if(document.fullscreenElement)await document.exitFullscreen();
+      else if(canvas.requestFullscreen)await canvas.requestFullscreen();
+      else throw new Error('Fullscreen unavailable');
+    } catch {
+      $('startupNotice').textContent='Tela cheia indisponível nesta janela. Abra o HTML diretamente no navegador e tente novamente.';
+      $('startupNotice').hidden=false;
+    }
+  };
   document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k===' '){e.preventDefault();togglePlay();}else if(k==='k')audioEvent('kick');else if(k==='c')audioEvent('clap');else if(k==='d')audioEvent('drop');else if(k==='n')$('nextBtn').click();});
   function effect(id,c,u,n,t,beatFraction){
-    const sc=Math.max(1,n-1), x=c/sc, phase=t*state.speed;
+    const sc=Math.max(1,n-1), x=c/sc, phase=state.motion;
     const wrapDistance=(a,b)=>{const d=Math.abs(fract(a)-fract(b));return Math.min(d,1-d)};
     switch(id){
       case 'ambient':return .15+.13*Math.sin(phase*.28+x*4+u*2)**2+.10*Math.sin(u*2.8-phase*.14)**2;
@@ -173,7 +214,7 @@
       case 'helix':return .07+.90*(.5+.5*Math.sin(u*16+x*8-phase*1.8))**7;
       case 'rain':{
         let a=.055;for(let i=0;i<4;i++){
-          const seed=c*13+i*19, drop=fract(hash(seed)*.85+phase*(.12+hash(seed+8)*.1));
+          const seed=c*13+i*19, drop=1-fract(hash(seed)*.85+phase*(.12+hash(seed+8)*.1));
           const lane=hash(seed+10),pos=u-drop;
           a+=.62*gaussian(pos, .018+state.trail*.085)*(lane>.1?1:0);
         }return a;
@@ -198,40 +239,62 @@
     return {power:clamp((energy+kickBoost+clapBoost+dropBoost)*state.brightness),color:paletteAt(palettePos)};
   }
   function drawBackground(){
-    ctx.clearRect(0,0,W,H);
-    const bg=ctx.createRadialGradient(600,250,20,600,250,670);bg.addColorStop(0,'#14233c');bg.addColorStop(.65,'#091426');bg.addColorStop(1,'#050912');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-    ctx.lineWidth=1;ctx.strokeStyle='#243449';ctx.globalAlpha=.28;
-    for(let x=60;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,35);ctx.lineTo(x,508);ctx.stroke();}
-    for(let y=45;y<500;y+=50){ctx.beginPath();ctx.moveTo(36,y);ctx.lineTo(W-36,y);ctx.stroke();}
-    ctx.globalAlpha=1;
-    ctx.fillStyle='#354256';ctx.fillRect(65,51,1070,7);
-    ctx.fillStyle='#07101e';ctx.fillRect(0,507,W,53);
-    const floor=ctx.createLinearGradient(0,505,0,560);floor.addColorStop(0,'#20344b');floor.addColorStop(1,'#060a12');ctx.fillStyle=floor;ctx.fillRect(0,505,W,55);
+    ctx.fillStyle='#020305';ctx.fillRect(0,0,W,H);
+    const bg=ctx.createRadialGradient(W/2,270,0,W/2,270,570);
+    bg.addColorStop(0,'#080b11');bg.addColorStop(1,'#020305');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#11151c';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(65,486);ctx.lineTo(W-65,486);ctx.stroke();
+    ctx.fillStyle='#536073';ctx.font='10px Segoe UI,Arial';ctx.textAlign='left';
+    ctx.fillText('MANGUEIRAS RGB / DIFUSOR FOSCO',38,32);
+    ctx.textAlign='right';ctx.fillText('600 LEDs  ·  200 PX / BARRA',W-38,32);
   }
   function drawColumns(){
-    const n=state.columns,pixels=state.pixels,start=112,end=W-112,spacing=(end-start)/(n-1),top=91,bottom=474,height=bottom-top,stripWidth=n>=8?19:25;
-    const lightCenters=[];
+    const n=state.columns,start=146,end=W-146,spacing=(end-start)/(n-1),top=76,bottom=464,height=bottom-top,tubeWidth=10;
+    lightCtx.clearRect(0,0,W,H);
     for(let c=0;c<n;c++){
       const x=start+spacing*c;
-      ctx.fillStyle='#1d2b3d';ctx.fillRect(x-stripWidth/2-5,top-10,stripWidth+10,height+21);
-      ctx.fillStyle='#07101b';ctx.fillRect(x-stripWidth/2,top-2,stripWidth,height+4);
-      let sums=[0,0,0],total=0;
-      for(let j=0;j<pixels;j++){
-        const u=j/Math.max(1,pixels-1),point=pixelValue(c,u,n),bright=point.power;
-        const y=bottom-(j+1)*height/pixels,h=Math.max(1,height/pixels-.32);
-        const col=point.color.map(v=>Math.round(v*(.06+.94*Math.pow(bright,.82))));
-        ctx.fillStyle=`rgb(${col.join(',')})`;ctx.fillRect(x-stripWidth/2+1,y,stripWidth-2,h);
-        if(bright>.53){ctx.fillStyle=`rgba(${point.color.map(v=>Math.round(v)).join(',')},${(bright-.52)*.23})`;ctx.fillRect(x-stripWidth/2-6,y-1,stripWidth+12,h+3);}
-        sums=sums.map((v,i)=>v+col[i]);total+=bright;
+      // A dim, round silicone body remains visible when the emitters are off.
+      ctx.strokeStyle='#15191f';ctx.lineWidth=tubeWidth+2;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();
+      ctx.strokeStyle='#080b10';ctx.lineWidth=tubeWidth-1;ctx.stroke();
+      ctx.lineCap='butt';ctx.lineWidth=2;ctx.strokeStyle='#161b23';
+      ctx.beginPath();ctx.moveTo(x,bottom+6);ctx.lineTo(x,bottom+18);ctx.bezierCurveTo(x,bottom+26,x+18,bottom+23,x+18,486);ctx.stroke();
+      const rgb=stripBuffers[c];
+      for(let pixel=0;pixel<PIXELS_PER_STRIP;pixel++){
+        const point=pixelValue(c,pixel/(PIXELS_PER_STRIP-1),n);
+        // Exposure and a brighter core make this read as emitted light, not paint.
+        const exposure=1.2*(1-Math.exp(-point.power*7.5));
+        for(let channel=0;channel<3;channel++){
+          rgb[pixel*3+channel]=(point.color[channel]+(255-point.color[channel])*.30)*exposure;
+        }
       }
-      const avg=total/pixels;
-      const halo=ctx.createRadialGradient(x,360,7,x,360,115);halo.addColorStop(0,`rgba(${sums.map(v=>Math.round(v/pixels)).join(',')},${avg*.3})`);halo.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=halo;ctx.fillRect(x-115,90,230,410);
-      ctx.fillStyle='#93a9c4';ctx.font='12px Segoe UI,Arial';ctx.textAlign='center';ctx.fillText(`STRIP ${String(c+1).padStart(2,'0')}`,x,493);
-      lightCenters.push({x,avg});
+      // 600 texture rows = 600 physical LEDs, explicitly mapped 3:1 to RGB pixels.
+      for(let led=0;led<LEDS_PER_STRIP;led++){
+        const pixel=Math.floor(led/LEDS_PER_PIXEL),row=LEDS_PER_STRIP-1-led;
+        for(let across=0;across<9;across++){
+          const offset=(row*9+across)*4,profile=tubeProfile[across];
+          texture.data[offset]=rgb[pixel*3]*profile;
+          texture.data[offset+1]=rgb[pixel*3+1]*profile;
+          texture.data[offset+2]=rgb[pixel*3+2]*profile;
+          texture.data[offset+3]=255;
+        }
+      }
+      textureCtx.putImageData(texture,0,0);
+      lightCtx.drawImage(stripTexture,x-tubeWidth/2,top,tubeWidth,height);
+      ctx.fillStyle='#1c212b';ctx.fillRect(x-4,top-6,8,6);ctx.fillRect(x-4,bottom,8,6);
+      ctx.fillStyle='#657183';ctx.font='11px Segoe UI,Arial';ctx.textAlign='center';
+      ctx.fillText(String(c+1).padStart(2,'0'),x,520);
     }
-    ctx.fillStyle='#0a1421';ctx.strokeStyle='#38506b';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(W/2-95,505,190,42,5);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#bdcbe0';ctx.textAlign='center';ctx.font='700 14px Segoe UI,Arial';ctx.fillText('DJ BOOTH',W/2,531);
-    return lightCenters;
+    ctx.save();ctx.globalCompositeOperation='screen';
+    // Broad spill, close diffusion, then the cylindrical luminous core.
+    ctx.filter='blur(20px)';ctx.globalAlpha=.8;ctx.drawImage(lightLayer,0,0);
+    ctx.filter='blur(5px)';ctx.globalAlpha=1;ctx.drawImage(lightLayer,0,0);
+    ctx.filter='none';ctx.drawImage(lightLayer,0,0);
+    // A restrained reflection grounds the tubes on the dark stage floor.
+    ctx.save();ctx.translate(0,486);ctx.scale(1,-.17);
+    ctx.globalAlpha=.18;ctx.filter='blur(9px)';ctx.drawImage(lightLayer,0,-bottom);
+    ctx.restore();ctx.restore();
   }
   function updateStats(){
     const bars=Math.floor(state.beat/4);$('bpmRead').textContent=state.bpm;
@@ -240,22 +303,33 @@
     const beatsToNext=sceneBeats()-state.beat%sceneBeats();$('nextRead').textContent=state.mode==='auto'?(beatsToNext/4).toFixed(1)+' compassos':'Manual';
     Array.from($('timeline').children).forEach((button,i)=>button.classList.toggle('active',state.mode==='auto'&&i===autoIndex()));
   }
-  let previousTime=performance.now(),previousIntegerBeat=0,lastStats=0;
+  let previousTime=performance.now(),lastStats=0;
+  document.addEventListener('visibilitychange',()=>{previousTime=performance.now();});
   function tick(now){
     const dt=Math.min(.08,(now-previousTime)/1000);previousTime=now;
     if(state.running){
-      const before=Math.floor(state.beat);state.beat+=dt*state.bpm/60;state.elapsed+=dt;
+      const before=Math.floor(state.beat);state.beat+=dt*state.bpm/60;state.elapsed+=dt;state.motion+=dt*state.bpm/60*state.speed;
       const after=Math.floor(state.beat);
       if(after>before){state.kick=1;if(after%4===1||after%4===3)state.clap=.58;}
       state.kick=Math.max(0,state.kick-dt*5.0);
       state.clap=Math.max(0,state.clap-dt*6.5);
       state.drop=Math.max(0,state.drop-dt*1.8);
     }
-    drawBackground();drawColumns();
-    if(now-lastStats>90){updateStats();lastStats=now;}
+    try {
+      drawBackground();drawColumns();
+      if(now-lastStats>90){updateStats();lastStats=now;}
+    } catch(error) {
+      console.error('Falha no simulador de LEDs:',error);
+      $('liveText').textContent='ERRO';
+      $('startupNotice').textContent='A animação encontrou um erro. Recarregue este arquivo em uma versão atual do Chrome, Edge ou Firefox.';
+      $('startupNotice').hidden=false;
+      return;
+    }
     requestAnimationFrame(tick);
   }
-  makeButtons();requestAnimationFrame(tick);
+  makeButtons();updateStripInfo();updateStats();
+  $('startupNotice').hidden=true;$('liveText').textContent='EXECUTANDO';
+  requestAnimationFrame(tick);
 })();
 </script>
 </body>
