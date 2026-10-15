@@ -28,6 +28,11 @@
     .white-controls:disabled { opacity:.45; }
     .white-controls legend { font-size:12px; color:#c3d3e8; padding:0 5px; }
     .white-controls .hint { margin-bottom:0; }
+    .flow-status { margin-top:12px; padding:12px; background:#0b1421; border:1px solid #283b51; border-radius:9px; }
+    .flow-status p { margin:0 0 8px; color:#b7cce2; font-size:12px; line-height:1.5; }
+    progress { display:block; width:100%; height:5px; border:0; border-radius:5px; accent-color:#70b7f4; }
+    progress::-webkit-progress-bar { background:#24354a; border-radius:5px; }
+    progress::-webkit-progress-value { background:#70b7f4; border-radius:5px; }
     .stage-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:12px 5px 0; color:#899bb3; font-size:11px; }
     .stage-meta strong { color:#c3d8ed; font-weight:600; }
     .spec { border:1px solid #354761; border-radius:8px; padding:9px; font-size:12px; color:#dceaff; background:#101c2d; }
@@ -82,7 +87,7 @@
     <div class="status-grid">
       <div class="stat"><div class="stat-label">BPM simulado</div><div class="stat-value" id="bpmRead">130</div></div>
       <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
-      <div class="stat"><div class="stat-label">Cena atual</div><div class="stat-value small" id="sceneRead">Atmosfera</div></div>
+      <div class="stat"><div class="stat-label">Cena atual</div><div class="stat-value small" id="sceneRead">Orgânico</div></div>
       <div class="stat"><div class="stat-label">Próxima transição</div><div class="stat-value small" id="nextRead">4 compassos</div></div>
     </div>
   </section>
@@ -92,11 +97,13 @@
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Sequência de efeitos</h2><button id="playBtn" class="primary">⏸ Pausar</button></div>
       <div class="button-grid" id="modeButtons"></div>
       <p class="hint" id="description">Uma apresentação com vinte cenas, sincronizadas por compassos, com transições suaves.</p>
+      <div class="flow-status"><p id="flowRead">Preparando a primeira combinação…</p><progress id="morphProgress" max="1" value="0" aria-label="Progresso da transição"></progress></div>
       <div class="button-row"><button id="kickBtn">Kick</button><button id="clapBtn">Clap</button><button id="dropBtn">Drop</button><button id="nextBtn">Próxima cena →</button></div>
+      <div class="button-row"><button id="newMixBtn">✦ Nova combinação orgânica</button></div>
       <div class="timeline">
         <h2>Timeline automática</h2>
         <div id="timeline" class="timeline-grid"></div>
-        <p class="hint">Clique em um bloco para saltar até a cena. O modo automático troca de cena a cada <span id="sceneBarsText">4</span> compassos.</p>
+        <p class="hint">Clique em um bloco para entrar na sequência a partir dessa cena. AUTO SHOW segue a ordem; ORGÂNICO cria combinações. Uma nova transição começa a cada <span id="sceneBarsText">4</span> compassos.</p>
       </div>
     </section>
 
@@ -106,6 +113,13 @@
       <div class="ctrl"><label for="brightness">Brilho</label><input id="brightness" type="range" min="0" max="100" value="80"><output id="brightnessValue">80%</output></div>
       <div class="ctrl"><label for="speed">Velocidade</label><input id="speed" type="range" min="25" max="200" value="100"><output id="speedValue">100%</output></div>
       <div class="ctrl"><label for="trail">Rastro</label><input id="trail" type="range" min="0" max="100" value="44"><output id="trailValue">44%</output></div>
+      <div class="ctrl"><label for="transition">Transição</label><input id="transition" type="range" min="1" max="12" step="0.5" value="4"><output id="transitionValue">4 s</output></div>
+      <fieldset class="white-controls" id="organicControls">
+        <legend>Movimento orgânico</legend>
+        <div class="ctrl"><label for="variation">Variação</label><input id="variation" type="range" min="0" max="100" value="65"><output id="variationValue">65%</output></div>
+        <p class="hint">Combina padrões com desvios lentos de posição, ritmo e cor. Valores maiores criam formas mais variadas.</p>
+      </fieldset>
+      <p class="hint">Transições longas se ajustam ao intervalo entre cenas. Ao pausar, a animação congela; escolher outra cena pausada mostra uma prévia imediata.</p>
       <div class="select-row">
         <div><label for="colorMode">Tipo de LED</label><select id="colorMode"><option value="rgb">RGB · três canais</option><option value="rgbw">RGBW · branco dedicado</option></select></div>
         <div><label for="palette">Paleta</label><select id="palette"><option value="deep">Azul e violeta</option><option value="fire">Âmbar e vermelho</option><option value="ice">Ciano e branco</option><option value="acid">Verde ácido</option><option value="mono">Branco frio</option></select></div>
@@ -181,9 +195,10 @@
     acid:[[14,112,71],[80,211,52],[225,250,55]],
     mono:[[74,90,126],[165,195,225],[245,248,255]]
   };
-  const state = {running:true,mode:'auto',bpm:130,brightness:.8,speed:1,trail:.44,palette:'deep',colorMode:'rgb',white:.35,whiteTone:'neutral',columns:6,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0,motion:0};
+  const state = {running:true,mode:'organic',bpm:130,brightness:.8,speed:1,trail:.44,transition:4,variation:.65,palette:'deep',colorMode:'rgb',white:.35,whiteTone:'neutral',columns:6,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0,motion:0};
   const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
   const smooth = x => {x=clamp(x);return x*x*(3-2*x)};
+  const smoother = x => {x=clamp(x);return x*x*x*(x*(x*6-15)+10);};
   // Finite support: outside the beam there is exactly zero emitted light.
   const beam = (distance,width) => {const q=Math.abs(distance)/width;return q>=1?0:(1-q*q)**2;};
   const tail = (distance,length) => distance<0||distance>=length?0:(1-distance/length)**2;
@@ -191,21 +206,72 @@
   const hash = n => fract(Math.sin(n*127.1+78.233)*43758.5453);
   const mix = (a,b,t)=>a+(b-a)*t;
   const sceneBeats = () => state.sceneBars*4;
-  const autoIndex = () => Math.floor(state.beat/sceneBeats())%scenes.length;
-  const sceneNow = () => state.mode==='auto'?scenes[autoIndex()]:scenes.find(s=>s.id===state.mode);
+  const organicPool=['ambient','wave','helix','rain','comet','scanner','sparkle','meteor','bounce','ripple','aurora'];
+  let organicBag=[],lastOrganicId='';
+  const playback={current:null,transition:null,nextBeat:16};
+  const sceneDescriptor=id=>({kind:'scene',id});
+  const descriptorName=d=>d.kind==='organic'?`${scenes.find(s=>s.id===d.a).name} + ${scenes.find(s=>s.id===d.b).name}`:d.kind==='snapshot'?'Mistura atual':scenes.find(s=>s.id===d.id).name;
+  const targetDescriptor=()=>playback.transition?.to||playback.current;
+  function noise(t,seed){const i=Math.floor(t);return mix(hash(i+seed),hash(i+1+seed),smoother(fract(t)));}
+  function organicDescriptor(){
+    if(!organicBag.length){
+      organicBag=[...organicPool];
+      for(let i=organicBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[organicBag[i],organicBag[j]]=[organicBag[j],organicBag[i]];}
+      if(organicBag.at(-1)===lastOrganicId)organicBag.unshift(organicBag.pop());
+    }
+    const a=organicBag.pop(),choices=organicPool.filter(id=>id!==a);
+    lastOrganicId=a;
+    return {kind:'organic',a,b:choices[Math.floor(Math.random()*choices.length)],seed:Math.random()*10000};
+  }
+  function transitionFraction(){const tr=playback.transition;return tr?clamp((state.elapsed-tr.start)/tr.duration):0;}
+  function capturePattern(){
+    const n=state.columns,data=new Float32Array(n*PIXELS_PER_STRIP*4);
+    for(let c=0;c<n;c++)for(let j=0;j<PIXELS_PER_STRIP;j++)data.set(compositeSample(c,j/(PIXELS_PER_STRIP-1),n),(c*PIXELS_PER_STRIP+j)*4);
+    return {kind:'snapshot',data,columns:n};
+  }
+  function beginTransition(to){
+    if(!state.running||!playback.current){playback.current=to;playback.transition=null;}
+    else {
+      const from=playback.transition?capturePattern():playback.current;
+      playback.transition={from,to,start:state.elapsed,duration:Math.min(state.transition,sceneBeats()*60/state.bpm*.85)};
+    }
+    playback.nextBeat=state.beat+sceneBeats();
+  }
+  function selectMode(mode,id){
+    state.mode=mode;
+    beginTransition(mode==='organic'?organicDescriptor():sceneDescriptor(id||(mode==='auto'?'ambient':mode)));
+    refreshButtons();
+  }
+  function advanceScene(){
+    if(state.mode==='organic')beginTransition(organicDescriptor());
+    else {
+      const target=targetDescriptor(),index=scenes.findIndex(s=>s.id===target.id);
+      state.mode='auto';beginTransition(sceneDescriptor(scenes[(index+1)%scenes.length].id));
+    }
+    refreshButtons();
+  }
+  function updatePlayback(){
+    if(playback.transition&&transitionFraction()>=1){playback.current=playback.transition.to;playback.transition=null;}
+    if((state.mode==='auto'||state.mode==='organic')&&!playback.transition&&state.beat>=playback.nextBeat)advanceScene();
+  }
   function paletteAt(t){const p=paletteMap[state.palette];const z=clamp(t)*2,k=Math.min(1,Math.floor(z)),f=smooth(z-k);return p[k].map((v,i)=>mix(v,p[k+1][i],f));}
   function audioEvent(type){state[type]=1;}
   function makeButtons(){
     const parent=$('modeButtons');
-    [{id:'auto',name:'AUTO SHOW'},...scenes].forEach(s=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.mode=s.id;b.onclick=()=>{state.mode=s.id;refreshButtons();};parent.appendChild(b);});
+    [{id:'organic',name:'✦ ORGÂNICO'},{id:'auto',name:'AUTO SHOW'},...scenes].forEach(s=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.mode=s.id;b.onclick=()=>selectMode(s.id);parent.appendChild(b);});
     const tl=$('timeline');
-    scenes.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML=`<strong>${String(i+1).padStart(2,'0')}</strong><span>${s.name}</span>`;b.title='Ir para '+s.name;b.onclick=()=>{state.mode='auto';state.beat=i*sceneBeats();refreshButtons();};tl.appendChild(b);});
+    scenes.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML=`<strong>${String(i+1).padStart(2,'0')}</strong><span>${s.name}</span>`;b.title='Ir para '+s.name;b.onclick=()=>selectMode('auto',s.id);tl.appendChild(b);});
     refreshButtons();
   }
-  function refreshButtons(){document.querySelectorAll('#modeButtons button').forEach(b=>{b.classList.toggle('active',b.dataset.mode===state.mode);b.setAttribute('aria-pressed',b.dataset.mode===state.mode);});$('description').textContent=state.mode==='auto'?`${scenes.length} cenas em ciclo, com transição progressiva nos dois últimos beats de cada bloco.`:scenes.find(s=>s.id===state.mode).desc;}
+  function refreshButtons(){
+    document.querySelectorAll('#modeButtons button').forEach(b=>{b.classList.toggle('active',b.dataset.mode===state.mode);b.setAttribute('aria-pressed',b.dataset.mode===state.mode);});
+    $('organicControls').disabled=state.mode!=='organic';
+    $('description').textContent=state.mode==='organic'?'Combinações aleatórias de dois padrões, com variações contínuas e transições suaves.':state.mode==='auto'?`${scenes.length} cenas em sequência, com sobreposição suave de luz e cor.`:scenes.find(s=>s.id===state.mode).desc;
+  }
   function bindRange(id,key,scale,suffix){const slider=$(id),val=$(id+'Value');slider.addEventListener('input',()=>{state[key]=+slider.value/scale;val.textContent=slider.value+suffix;});}
   bindRange('bpm','bpm',1,'');bindRange('brightness','brightness',100,'%');bindRange('speed','speed',100,'%');bindRange('trail','trail',100,'%');
   bindRange('white','white',100,'%');
+  bindRange('transition','transition',1,' s');bindRange('variation','variation',100,'%');
   $('colorMode').onchange=e=>{state.colorMode=e.target.value;$('whiteControls').disabled=state.colorMode!=='rgbw';$('colorModeRead').textContent=state.colorMode.toUpperCase();};
   $('whiteTone').onchange=e=>{state.whiteTone=e.target.value;};
   $('palette').onchange=e=>{state.palette=e.target.value};
@@ -215,12 +281,18 @@
     $('totalRead').textContent=`${state.columns} barras · ${(state.columns*LEDS_PER_STRIP).toLocaleString('pt-BR')} LEDs · ${(state.columns*PIXELS_PER_STRIP).toLocaleString('pt-BR')} pixels`;
     canvas.setAttribute('aria-label',`Palco virtual com ${state.columns} mangueiras animadas, cada uma com 600 LEDs em 200 pixels`);
   }
-  $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;state.beat=0;$('sceneBarsText').textContent=state.sceneBars};
+  $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;playback.nextBeat=state.beat+sceneBeats();$('sceneBarsText').textContent=state.sceneBars};
   $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=()=>audioEvent('drop');
   function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').classList.toggle('paused',!state.running);}
   $('playBtn').onclick=togglePlay;
-  $('nextBtn').onclick=()=>{state.mode='auto';state.beat=(Math.floor(state.beat/sceneBeats())+1)*sceneBeats();audioEvent('drop');refreshButtons();};
-  $('restartBtn').onclick=()=>{state.beat=0;state.elapsed=0;state.motion=0;state.mode='auto';state.kick=state.clap=state.drop=0;refreshButtons();};
+  $('nextBtn').onclick=advanceScene;
+  $('newMixBtn').onclick=()=>selectMode('organic');
+  $('restartBtn').onclick=()=>{
+    state.beat=state.elapsed=state.motion=state.kick=state.clap=state.drop=0;
+    playback.transition=null;playback.nextBeat=sceneBeats();
+    playback.current=state.mode==='organic'?organicDescriptor():sceneDescriptor(state.mode==='auto'?'ambient':state.mode);
+    refreshButtons();
+  };
   $('fullscreenBtn').onclick=async()=>{
     try {
       if(document.fullscreenElement)await document.exitFullscreen();
@@ -232,42 +304,42 @@
     }
   };
   document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k===' '){e.preventDefault();togglePlay();}else if(k==='k')audioEvent('kick');else if(k==='c')audioEvent('clap');else if(k==='d')audioEvent('drop');else if(k==='n')$('nextBtn').click();});
-  function effect(id,c,u,n,t,beatFraction){
-    const sc=Math.max(1,n-1), x=c/sc, phase=state.motion;
+  function effect(id,c,u,n,t,beatFraction,phase=state.motion,trail=state.trail){
+    const sc=Math.max(1,n-1), x=c/sc;
     const wrapDistance=(a,b)=>{const d=Math.abs(fract(a)-fract(b));return Math.min(d,1-d)};
     switch(id){
       case 'ambient':return .55*(.5+.5*Math.sin(phase*.28+x*4+u*3))**2;
       case 'pulse':return Math.exp(-beatFraction*8)*(.75+.25*Math.sin(u*2.9+x*3));
-      case 'chase':return beam(x-(.5+.62*Math.sin(phase*.36)),.12+state.trail*.18);
-      case 'mirror':return beam(Math.abs(x-.5)-Math.abs(fract(phase*.075)*1.1-.55),.07+state.trail*.12);
-      case 'wave':return beam(wrapDistance(u,phase*.16+x*.43),.06+state.trail*.15);
+      case 'chase':return beam(x-(.5+.62*Math.sin(phase*.36)),.12+trail*.18);
+      case 'mirror':return beam(Math.abs(x-.5)-Math.abs(fract(phase*.075)*1.1-.55),.07+trail*.12);
+      case 'wave':return beam(wrapDistance(u,phase*.16+x*.43),.06+trail*.15);
       case 'helix':return (.5+.5*Math.sin(u*16+x*8-phase*1.8))**9;
       case 'rain':{
         let a=0;for(let i=0;i<4;i++){
           const seed=c*13+i*19, drop=1-fract(hash(seed)*.85+phase*(.12+hash(seed+8)*.1));
           const lane=hash(seed+10),pos=u-drop;
-          a+=Math.max(beam(pos,.016),tail(pos,.035+state.trail*.18))*(lane>.1?1:0);
+          a+=Math.max(beam(pos,.016),tail(pos,.035+trail*.18))*(lane>.1?1:0);
         }return a;
       }
       case 'drop':{
-        const d=Math.hypot((x-.5)*1.1,(u-.5)*.8),radius=fract(phase*.16);return beam(d-radius,.065+state.trail*.12);
+        const d=Math.hypot((x-.5)*1.1,(u-.5)*.8),radius=fract(phase*.16);return beam(d-radius,.065+trail*.12);
       }
       case 'comet':{
         const head=fract(phase*.17-x*.19)*1.4-.2,d=head-u;
-        return Math.max(beam(d,.025),tail(d,.10+state.trail*.36));
+        return Math.max(beam(d,.025),tail(d,.10+trail*.36));
       }
-      case 'scanner':return beam(u-(.5+.48*Math.sin(phase*.65)),.025+state.trail*.06);
+      case 'scanner':return beam(u-(.5+.48*Math.sin(phase*.65)),.025+trail*.06);
       case 'sparkle':{
         let a=0;
         for(let i=0;i<8;i++){
           const clock=phase*.35+hash(c*31+i)*5,cycle=Math.floor(clock);
           const center=hash(c*113+i*37+cycle*71);
-          a+=beam(u-center,.009+state.trail*.018)*Math.sin(Math.PI*fract(clock))**6;
+          a+=beam(u-center,.009+trail*.018)*Math.sin(Math.PI*fract(clock))**6;
         }return a;
       }
       case 'meteor':{
         const head=1.3-fract(phase*.24+c*.21)*1.7,d=u-head;
-        return Math.max(beam(d,.018),tail(d,.12+state.trail*.4));
+        return Math.max(beam(d,.018),tail(d,.12+trail*.4));
       }
       case 'fire':{
         const height=.28+.26*(.5+.5*Math.sin(phase*1.1+c*2.3))+.18*Math.sin(phase*2.1+c)**2;
@@ -277,50 +349,67 @@
       case 'blocks':return (Math.floor(u*8)+c+Math.floor(t))%3===0?.85:0;
       case 'bounce':{
         const p=fract(phase*.18+c*.137),head=.05+.9*4*p*(1-p);
-        return Math.max(beam(u-head,.028),.5*tail(head-u,.05+state.trail*.15));
+        return Math.max(beam(u-head,.028),.5*tail(head-u,.05+trail*.15));
       }
-      case 'ripple':return beam(Math.abs(u-.5)-fract(phase*.18-x*.1)*.65,.025+state.trail*.06);
+      case 'ripple':return beam(Math.abs(u-.5)-fract(phase*.18-x*.1)*.65,.025+trail*.06);
       case 'equalizer':{
         const level=.12+.72*(.5+.5*Math.sin(phase*.9+c*1.7)*Math.cos(phase*.37+c*.8));
         return smooth((level-u)/.025)*(.65+.35*Math.exp(-beatFraction*5));
       }
       case 'snake':{
         const path=(c+(c%2?1-u:u))/n,head=fract(phase*.09),d=fract(head-path);
-        return tail(d,.08+state.trail*.18);
+        return tail(d,.08+trail*.18);
       }
       case 'aurora':{
         const center=.5+.26*Math.sin(x*5+phase*.28)+.1*Math.sin(x*11-phase*.43);
-        return beam(u-center,.12+state.trail*.22)*(.55+.45*Math.sin(u*13+x*4+phase*.8)**2);
+        return beam(u-center,.12+trail*.22)*(.55+.45*Math.sin(u*13+x*4+phase*.8)**2);
       }
       default:return 0;
     }
   }
-  function sceneColor(id,c,u,n){
+  function sceneColor(id,c,u,n,phase=state.motion,organicShift=null){
     if(id==='rainbow'){
-      const hue=fract(u*.7+c/n*.5-state.motion*.035);
+      const hue=fract(u*.7+c/n*.5-phase*.035);
       return [0,2/3,1/3].map(offset=>255*clamp(Math.abs(fract(hue+offset)*6-3)-1));
     }
     if(id==='fire')return [255,mix(35,210,1-u),mix(0,38,1-u)];
-    return paletteAt(fract(c/Math.max(1,n-1)*.55+u*.28+state.beat*.004));
+    return paletteAt(organicShift===null?fract(c/Math.max(1,n-1)*.55+u*.28+state.beat*.004):.5+.5*Math.sin(c/Math.max(1,n-1)*2+u*1.8+phase*.008+organicShift));
+  }
+  // Premultiplied linear RGB + intensity: darkness and saturated colors survive blends.
+  function sampleScene(id,c,u,n,phase=state.motion,trail=state.trail,shift=null){
+    const energy=effect(id,c,u,n,state.beat,fract(state.beat),phase,trail);
+    const power=clamp((energy-.035)/.965)**1.15,color=sceneColor(id,c,u,n,phase,shift);
+    return [color[0]/255*power,color[1]/255*power,color[2]/255*power,power];
+  }
+  function sampleDescriptor(d,c,u,n){
+    if(d.kind==='snapshot'){
+      const column=clamp(c/Math.max(1,n-1))*(d.columns-1),left=Math.floor(column),right=Math.min(d.columns-1,left+1);
+      const row=Math.round(clamp(u)*(PIXELS_PER_STRIP-1)),a=(left*PIXELS_PER_STRIP+row)*4,b=(right*PIXELS_PER_STRIP+row)*4;
+      return [0,1,2,3].map(i=>mix(d.data[a+i],d.data[b+i],column-left));
+    }
+    if(d.kind==='scene')return sampleScene(d.id,c,u,n);
+    const t=state.elapsed,amount=state.variation,seed=d.seed;
+    const drift=(noise(t*.045,seed)-.5)*amount*2;
+    const phase=state.motion*.62+hash(seed+19)*30+drift;
+    const warped=clamp(u+(noise(t*.055+c*.37,seed+83)-.5)*amount*.26);
+    const trail=clamp(state.trail*(1+amount*(noise(t*.04,seed+51)-.5)*.7));
+    const shift=(noise(t*.035,seed+701)-.5)*amount*1.4;
+    const a=sampleScene(d.a,c,warped,n,phase,trail,shift);
+    const b=sampleScene(d.b,c,clamp(1-warped),n,phase*.83+7,trail,-shift);
+    const blend=amount*(.22+.23*noise(t*.06,seed+153));
+    return a.map((value,i)=>mix(value,b[i],blend));
+  }
+  function compositeSample(c,u,n){
+    const tr=playback.transition;
+    if(!tr)return sampleDescriptor(playback.current,c,u,n);
+    const from=sampleDescriptor(tr.from,c,u,n),to=sampleDescriptor(tr.to,c,u,n),fade=smoother(transitionFraction());
+    return from.map((value,i)=>mix(value,to[i],fade));
   }
   function pixelValue(c,u,n){
-    const block=sceneBeats(),current=sceneNow(),f=fract(state.beat),time=state.beat;
-    let energy=effect(current.id,c,u,n,time,f);
-    let color=sceneColor(current.id,c,u,n);
-    if(state.mode==='auto'){
-      const position=state.beat%block,remaining=block-position;
-      if(remaining<2){
-        const next=scenes[(autoIndex()+1)%scenes.length],fade=smooth((2-remaining)/2);
-        const nextEnergy=effect(next.id,c,u,n,time,f),nextColor=sceneColor(next.id,c,u,n);
-        const combined=mix(energy,nextEnergy,fade);
-        color=color.map((v,i)=>combined>0?mix(v*energy,nextColor[i]*nextEnergy,fade)/combined:0);
-        energy=combined;
-      }
-    }
-    // Gate before accents: neither simulated beats nor W may relight an off pixel.
-    const active=clamp((energy-.035)/.965)**1.15;
+    const sample=compositeSample(c,u,n),active=sample[3];
+    // Accents and W only use the light actually present in the blended patterns.
     const accent=1+state.kick*.8+state.clap*1.2*beam(u-.72,.22)+state.drop*2;
-    return {power:clamp(active*accent)*state.brightness,color};
+    return {power:clamp(active*accent)*state.brightness,color:sample.slice(0,3).map(v=>active>0?v/active*255:0)};
   }
   function drawBackground(){
     ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
@@ -373,9 +462,12 @@
   function updateStats(){
     const bars=Math.floor(state.beat/4);$('bpmRead').textContent=state.bpm;
     $('barRead').textContent=String((bars%(state.sceneBars*scenes.length))+1).padStart(2,'0')+' / '+(Math.floor(state.beat)%4+1);
-    $('sceneRead').textContent=sceneNow().name;
-    const beatsToNext=sceneBeats()-state.beat%sceneBeats();$('nextRead').textContent=state.mode==='auto'?(beatsToNext/4).toFixed(1)+' compassos':'Manual';
-    Array.from($('timeline').children).forEach((button,i)=>button.classList.toggle('active',state.mode==='auto'&&i===autoIndex()));
+    const target=targetDescriptor(),tr=playback.transition;
+    $('sceneRead').textContent=target.kind==='organic'?'Orgânico':descriptorName(target);
+    $('nextRead').textContent=tr?`${Math.max(0,tr.duration-(state.elapsed-tr.start)).toFixed(1)} s de fusão`:(state.mode==='auto'||state.mode==='organic')?`${(Math.max(0,playback.nextBeat-state.beat)/4).toFixed(1)} compassos`:'Manual';
+    $('flowRead').textContent=tr?`${descriptorName(tr.from)} → ${descriptorName(tr.to)}`:`${descriptorName(target)} · ${state.mode==='organic'?'evolução contínua':'padrão atual'}`;
+    $('morphProgress').value=tr?transitionFraction():0;
+    Array.from($('timeline').children).forEach((button,i)=>button.classList.toggle('active',state.mode==='auto'&&scenes[i].id===target.id));
   }
   let previousTime=performance.now(),lastStats=0;
   document.addEventListener('visibilitychange',()=>{previousTime=performance.now();});
@@ -386,6 +478,7 @@
       state.kick=Math.max(0,state.kick-dt*5.0);
       state.clap=Math.max(0,state.clap-dt*6.5);
       state.drop=Math.max(0,state.drop-dt*1.8);
+      updatePlayback();
     }
     try {
       drawBackground();drawColumns();
@@ -399,6 +492,7 @@
     }
     requestAnimationFrame(tick);
   }
+  playback.current=organicDescriptor();
   makeButtons();updateStripInfo();updateStats();
   $('startupNotice').hidden=true;$('liveText').textContent='EXECUTANDO';
   requestAnimationFrame(tick);
