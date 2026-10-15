@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b101c" />
+  <title>BeatLight · Pixel Studio — Demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Segoe UI", Arial, sans-serif; background:#090d16; color:#e9f0ff; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px; background:radial-gradient(ellipse at 50% -8%,#192b46 0%,#090d16 54%); min-height:100vh; }
+    .app { max-width:1190px; margin:auto; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:17px; }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .mark { width:42px; height:42px; display:grid; place-items:center; border-radius:12px; font-size:22px; font-weight:900; background:linear-gradient(145deg,#235a99,#873db1); box-shadow:0 0 30px #407dd22d; }
+    h1 { margin:0; font-size:20px; font-weight:800; letter-spacing:.6px; }
+    .sub { font-size:12px; color:#91a1bb; margin-top:4px; }
+    .pill { border-radius:30px; border:1px solid #2a425d; background:#11243a; padding:7px 10px; color:#b4dbff; font-size:11px; letter-spacing:.4px; }
+    .panel { background:#111a2a; border:1px solid #27354a; border-radius:14px; padding:17px; box-shadow:0 12px 45px #0000001a; }
+    .stage-panel { padding:12px; }
+    .stage-top { display:flex; align-items:center; justify-content:space-between; padding:4px 5px 12px; gap:10px; }
+    .stage-title { font-size:12px; letter-spacing:1.5px; font-weight:800; color:#a6bbd8; }
+    .live { font-size:11px; color:#7fdbbb; display:flex; align-items:center; gap:7px; }
+    .live-dot { background:#51ddac; width:7px; height:7px; border-radius:50%; box-shadow:0 0 9px #51ddac; }
+    canvas { width:100%; aspect-ratio:1200/560; background:#050a14; border-radius:10px; display:block; }
+    .status-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+    .stat { padding:11px 13px; border:1px solid #25354c; border-radius:10px; background:#0c1422; }
+    .stat-label { font-size:10px; color:#8b9db8; text-transform:uppercase; letter-spacing:1.2px; }
+    .stat-value { font-size:21px; font-weight:750; margin-top:4px; font-variant-numeric:tabular-nums; }
+    .stat-value.small { font-size:16px; padding-top:4px; }
+    .layout { display:grid; grid-template-columns: 1.35fr 1fr; gap:14px; margin-top:14px; }
+    h2 { font-size:14px; font-weight:750; margin:0 0 12px; }
+    .hint { color:#869bb8; font-size:12px; line-height:1.5; }
+    .button-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+    button { border:1px solid #34445e; color:#d8e6fa; background:#182438; border-radius:9px; padding:10px; cursor:pointer; font:inherit; font-size:12px; font-weight:650; transition:border-color .12s,background .12s; }
+    button:hover { border-color:#5898d4; background:#20324d; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid #74b4f1; outline-offset:2px; }
+    button.active { background:#1b4c84; border-color:#58a2e9; color:#fff; }
+    button.primary { background:#1d588e; border-color:#4595d7; }
+    .button-row { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
+    .button-row button { flex:1; min-width:85px; }
+    .ctrl { display:grid; grid-template-columns:88px minmax(0,1fr) 45px; align-items:center; gap:10px; margin:13px 0; }
+    label { font-size:12px; color:#c3d3e8; }
+    .ctrl output { font-size:12px; font-variant-numeric:tabular-nums; text-align:right; color:#a8d1fa; }
+    input[type=range] { width:100%; accent-color:#63abf1; cursor:pointer; }
+    select { color:#dceaff; background:#17253a; border:1px solid #354761; border-radius:8px; padding:9px; font:inherit; font-size:12px; width:100%; }
+    .select-row { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:15px; }
+    .select-row label { display:block; margin-bottom:6px; }
+    .timeline { margin-top:14px; }
+    .timeline-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; margin-top:9px; }
+    .timeline button { padding:9px 2px; min-width:0; font-size:10px; display:flex; align-items:center; flex-direction:column; gap:4px; }
+    .timeline button span { color:#8ea7c9; font-weight:500; font-size:9px; }
+    .timeline button.active span { color:#d5eaff; }
+    .foot { color:#8195b2; font-size:11px; line-height:1.6; margin:15px 4px; }
+    @media(max-width:760px){body{padding:10px}.layout{grid-template-columns:1fr}.panel{padding:12px}.status-grid{grid-template-columns:repeat(2,1fr)}.timeline-grid{grid-template-columns:repeat(4,1fr)}.ctrl{grid-template-columns:75px minmax(0,1fr) 42px}.stage-panel{padding:8px}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <div class="brand"><div class="mark">B</div><div><h1>BEATLIGHT <span style="color:#70b7f4">PIXEL STUDIO</span></h1><div class="sub">Demonstração de iluminação por colunas · motor visual independente de hardware</div></div></div>
+    <span class="pill">SIMULAÇÃO LOCAL · SEM DMX</span>
+  </header>
+
+  <section class="panel stage-panel">
+    <div class="stage-top"><span class="stage-title">STAGE PREVIEW · SEIS COLUNAS</span><span class="live"><span class="live-dot" id="liveDot"></span><span id="liveText">EXECUTANDO</span></span></div>
+    <canvas id="stage" width="1200" height="560" aria-label="Palco virtual de seis colunas de LED animadas"></canvas>
+    <div class="status-grid">
+      <div class="stat"><div class="stat-label">BPM</div><div class="stat-value" id="bpmRead">130</div></div>
+      <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
+      <div class="stat"><div class="stat-label">Cena atual</div><div class="stat-value small" id="sceneRead">Atmosfera</div></div>
+      <div class="stat"><div class="stat-label">Próxima transição</div><div class="stat-value small" id="nextRead">8 compassos</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Sequência de efeitos</h2><button id="playBtn" class="primary">⏸ Pausar</button></div>
+      <div class="button-grid" id="modeButtons"></div>
+      <p class="hint" id="description">Uma apresentação completa com oito cenas, sincronizadas por compassos, com transições suaves.</p>
+      <div class="button-row"><button id="kickBtn">Kick</button><button id="clapBtn">Clap</button><button id="dropBtn">Drop</button><button id="nextBtn">Próxima cena →</button></div>
+      <div class="timeline">
+        <h2>Timeline automática</h2>
+        <div id="timeline" class="timeline-grid"></div>
+        <p class="hint">Clique em um bloco para saltar até a cena. O modo automático troca de cena a cada <span id="sceneBarsText">4</span> compassos.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Parâmetros do Pixel Engine</h2>
+      <div class="ctrl"><label for="bpm">BPM</label><input id="bpm" type="range" min="90" max="165" value="130"><output id="bpmValue">130</output></div>
+      <div class="ctrl"><label for="brightness">Brilho</label><input id="brightness" type="range" min="0" max="100" value="80"><output id="brightnessValue">80%</output></div>
+      <div class="ctrl"><label for="speed">Velocidade</label><input id="speed" type="range" min="25" max="200" value="100"><output id="speedValue">100%</output></div>
+      <div class="ctrl"><label for="trail">Rastro</label><input id="trail" type="range" min="0" max="100" value="44"><output id="trailValue">44%</output></div>
+      <div class="select-row">
+        <div><label for="palette">Paleta</label><select id="palette"><option value="deep">Azul e violeta</option><option value="fire">Âmbar e vermelho</option><option value="ice">Ciano e branco</option><option value="acid">Verde ácido</option><option value="mono">Branco frio</option></select></div>
+        <div><label for="sceneBars">Compassos por cena</label><select id="sceneBars"><option value="2">2 compassos</option><option value="4" selected>4 compassos</option><option value="8">8 compassos</option><option value="16">16 compassos</option></select></div>
+        <div><label for="columns">Colunas</label><select id="columns"><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select></div>
+        <div><label for="density">Pixels por coluna</label><select id="density"><option value="50">50 pixels</option><option value="100" selected>100 pixels</option><option value="150">150 pixels</option><option value="300">300 pixels</option></select></div>
+      </div>
+      <div class="button-row"><button id="restartBtn">↺ Reiniciar apresentação</button><button id="fullscreenBtn">⛶ Tela cheia</button></div>
+      <p class="hint">Atalhos: <strong>Espaço</strong> pausa/reproduz; <strong>K</strong> dispara kick; <strong>C</strong> clap; <strong>D</strong> drop; <strong>N</strong> próxima cena.</p>
+    </section>
+  </div>
+  <p class="foot">Demo visual autônoma: não captura áudio, não envia DDP/Art-Net e não controla LEDs físicos. As animações são calculadas por pixel e servem como base para integrar o Beat Tracker e o Pixel Output do BeatLight DMX.</p>
+</main>
+<script>
+'use strict';
+(() => {
+  const $ = id => document.getElementById(id);
+  const canvas = $('stage');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const scenes = [
+    {id:'ambient',name:'Atmosfera',desc:'Respiração azul/violeta com gradientes lentos e movimentos suaves.'},
+    {id:'pulse',name:'Kick Pulse',desc:'Colunas inteiras pulsam com o kick e decaem musicalmente.'},
+    {id:'chase',name:'Chase',desc:'Feixe atravessa as colunas na horizontal e deixa rastro.'},
+    {id:'mirror',name:'Espelhamento',desc:'Pares de colunas se acendem simetricamente das laterais para o centro.'},
+    {id:'wave',name:'Onda Vertical',desc:'Ondas de luz sobem nas colunas com defasagem espacial.'},
+    {id:'helix',name:'Helix',desc:'Faixas diagonais criam uma hélice entre as colunas.'},
+    {id:'rain',name:'Pixel Rain',desc:'Partículas caem pelas colunas com rastros luminosos.'},
+    {id:'drop',name:'Drop Impact',desc:'Explosão central, propagação radial e resposta dinâmica à batida.'}
+  ];
+  const paletteMap = {
+    deep:[[20,71,177],[112,52,211],[36,195,231]],
+    fire:[[218,40,31],[248,118,31],[255,199,74]],
+    ice:[[14,115,192],[41,211,229],[220,246,255]],
+    acid:[[14,112,71],[80,211,52],[225,250,55]],
+    mono:[[74,90,126],[165,195,225],[245,248,255]]
+  };
+  const state = {running:true,mode:'auto',bpm:130,brightness:.8,speed:1,trail:.44,palette:'deep',columns:6,pixels:100,sceneBars:4,beat:0,kick:0,clap:0,drop:0,elapsed:0};
+  const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+  const smooth = x => {x=clamp(x);return x*x*(3-2*x)};
+  const gaussian = (x,s) => Math.exp(-.5*(x/s)**2);
+  const fract = x => x-Math.floor(x);
+  const hash = n => fract(Math.sin(n*127.1+78.233)*43758.5453);
+  const mix = (a,b,t)=>a+(b-a)*t;
+  const sceneBeats = () => state.sceneBars*4;
+  const autoIndex = () => Math.floor(state.beat/sceneBeats())%scenes.length;
+  const sceneNow = () => state.mode==='auto'?scenes[autoIndex()]:scenes.find(s=>s.id===state.mode);
+  function paletteAt(t){const p=paletteMap[state.palette];const z=clamp(t)*2,k=Math.min(1,Math.floor(z)),f=smooth(z-k);return p[k].map((v,i)=>mix(v,p[k+1][i],f));}
+  function audioEvent(type){state[type]=1;}
+  function makeButtons(){
+    const parent=$('modeButtons');
+    [{id:'auto',name:'AUTO SHOW'},...scenes].forEach(s=>{const b=document.createElement('button');b.textContent=s.name;b.dataset.mode=s.id;b.onclick=()=>{state.mode=s.id;refreshButtons();};parent.appendChild(b);});
+    const tl=$('timeline');
+    scenes.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML=`<strong>${String(i+1).padStart(2,'0')}</strong><span>${s.name}</span>`;b.title='Ir para '+s.name;b.onclick=()=>{state.mode='auto';state.beat=i*sceneBeats();refreshButtons();};tl.appendChild(b);});
+    refreshButtons();
+  }
+  function refreshButtons(){document.querySelectorAll('#modeButtons button').forEach(b=>b.classList.toggle('active',b.dataset.mode===state.mode));$('description').textContent=state.mode==='auto'?'Oito cenas em ciclo, com transição progressiva nos dois últimos beats de cada bloco.':scenes.find(s=>s.id===state.mode).desc;}
+  function bindRange(id,key,scale,suffix){const slider=$(id),val=$(id+'Value');slider.addEventListener('input',()=>{state[key]=+slider.value/scale;val.textContent=slider.value+suffix;});}
+  bindRange('bpm','bpm',1,'');bindRange('brightness','brightness',100,'%');bindRange('speed','speed',100,'%');bindRange('trail','trail',100,'%');
+  $('palette').onchange=e=>{state.palette=e.target.value};
+  $('columns').onchange=e=>{state.columns=+e.target.value};
+  $('density').onchange=e=>{state.pixels=+e.target.value};
+  $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;state.beat=0;$('sceneBarsText').textContent=state.sceneBars};
+  $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=()=>audioEvent('drop');
+  function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').style.background=state.running?'#51ddac':'#e0a74e';}
+  $('playBtn').onclick=togglePlay;
+  $('nextBtn').onclick=()=>{state.mode='auto';state.beat=(Math.floor(state.beat/sceneBeats())+1)*sceneBeats();audioEvent('drop');refreshButtons();};
+  $('restartBtn').onclick=()=>{state.beat=0;state.elapsed=0;state.mode='auto';state.kick=state.clap=state.drop=0;refreshButtons();};
+  $('fullscreenBtn').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else canvas.requestFullscreen?.();};
+  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k===' '){e.preventDefault();togglePlay();}else if(k==='k')audioEvent('kick');else if(k==='c')audioEvent('clap');else if(k==='d')audioEvent('drop');else if(k==='n')$('nextBtn').click();});
+  function effect(id,c,u,n,t,beatFraction){
+    const sc=Math.max(1,n-1), x=c/sc, phase=t*state.speed;
+    const wrapDistance=(a,b)=>{const d=Math.abs(fract(a)-fract(b));return Math.min(d,1-d)};
+    switch(id){
+      case 'ambient':return .15+.13*Math.sin(phase*.28+x*4+u*2)**2+.10*Math.sin(u*2.8-phase*.14)**2;
+      case 'pulse':return .07+(.87*Math.exp(-beatFraction*6))*(.75+.25*Math.sin(u*2.9+x*3));
+      case 'chase':return .06+.93*gaussian(wrapDistance(x,phase*.075),.085+state.trail*.16);
+      case 'mirror':return .05+.94*gaussian(Math.abs(x-.5)-Math.abs(fract(phase*.075)*1.05-.52),.045+state.trail*.10);
+      case 'wave':return .07+.91*gaussian(wrapDistance(u,fract(phase*.16+x*.43)),.033+state.trail*.1);
+      case 'helix':return .07+.90*(.5+.5*Math.sin(u*16+x*8-phase*1.8))**7;
+      case 'rain':{
+        let a=.055;for(let i=0;i<4;i++){
+          const seed=c*13+i*19, drop=fract(hash(seed)*.85+phase*(.12+hash(seed+8)*.1));
+          const lane=hash(seed+10),pos=u-drop;
+          a+=.62*gaussian(pos, .018+state.trail*.085)*(lane>.1?1:0);
+        }return a;
+      }
+      case 'drop':{
+        const d=Math.hypot((x-.5)*1.1,(u-.5)*.8),radius=fract(phase*.16);return .07+.90*gaussian(d-radius,.055+state.trail*.10)+.3*Math.exp(-beatFraction*8);
+      }
+      default:return 0;
+    }
+  }
+  function pixelValue(c,u,n){
+    const block=sceneBeats(),current=sceneNow(),f=fract(state.beat),time=state.beat;
+    let energy=effect(current.id,c,u,n,time,f);
+    let palettePos=fract(c/(Math.max(1,n-1))*.55+u*.28+time*.004);
+    if(state.mode==='auto'){
+      const position=state.beat%block,remaining=block-position;
+      if(remaining<2){const next=scenes[(autoIndex()+1)%scenes.length];const fade=smooth((2-remaining)/2);energy=mix(energy,effect(next.id,c,u,n,time,f),fade);}
+    }
+    const kickBoost=state.kick*.24*(.65+.35*Math.sin(u*5));
+    const clapBoost=state.clap*.36*gaussian(u-.72,.16);
+    const dropBoost=state.drop*.45;
+    return {power:clamp((energy+kickBoost+clapBoost+dropBoost)*state.brightness),color:paletteAt(palettePos)};
+  }
+  function drawBackground(){
+    ctx.clearRect(0,0,W,H);
+    const bg=ctx.createRadialGradient(600,250,20,600,250,670);bg.addColorStop(0,'#14233c');bg.addColorStop(.65,'#091426');bg.addColorStop(1,'#050912');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.lineWidth=1;ctx.strokeStyle='#243449';ctx.globalAlpha=.28;
+    for(let x=60;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,35);ctx.lineTo(x,508);ctx.stroke();}
+    for(let y=45;y<500;y+=50){ctx.beginPath();ctx.moveTo(36,y);ctx.lineTo(W-36,y);ctx.stroke();}
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#354256';ctx.fillRect(65,51,1070,7);
+    ctx.fillStyle='#07101e';ctx.fillRect(0,507,W,53);
+    const floor=ctx.createLinearGradient(0,505,0,560);floor.addColorStop(0,'#20344b');floor.addColorStop(1,'#060a12');ctx.fillStyle=floor;ctx.fillRect(0,505,W,55);
+  }
+  function drawColumns(){
+    const n=state.columns,pixels=state.pixels,start=112,end=W-112,spacing=(end-start)/(n-1),top=91,bottom=474,height=bottom-top,stripWidth=n>=8?19:25;
+    const lightCenters=[];
+    for(let c=0;c<n;c++){
+      const x=start+spacing*c;
+      ctx.fillStyle='#1d2b3d';ctx.fillRect(x-stripWidth/2-5,top-10,stripWidth+10,height+21);
+      ctx.fillStyle='#07101b';ctx.fillRect(x-stripWidth/2,top-2,stripWidth,height+4);
+      let sums=[0,0,0],total=0;
+      for(let j=0;j<pixels;j++){
+        const u=j/Math.max(1,pixels-1),point=pixelValue(c,u,n),bright=point.power;
+        const y=bottom-(j+1)*height/pixels,h=Math.max(1,height/pixels-.32);
+        const col=point.color.map(v=>Math.round(v*(.06+.94*Math.pow(bright,.82))));
+        ctx.fillStyle=`rgb(${col.join(',')})`;ctx.fillRect(x-stripWidth/2+1,y,stripWidth-2,h);
+        if(bright>.53){ctx.fillStyle=`rgba(${point.color.map(v=>Math.round(v)).join(',')},${(bright-.52)*.23})`;ctx.fillRect(x-stripWidth/2-6,y-1,stripWidth+12,h+3);}
+        sums=sums.map((v,i)=>v+col[i]);total+=bright;
+      }
+      const avg=total/pixels;
+      const halo=ctx.createRadialGradient(x,360,7,x,360,115);halo.addColorStop(0,`rgba(${sums.map(v=>Math.round(v/pixels)).join(',')},${avg*.3})`);halo.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=halo;ctx.fillRect(x-115,90,230,410);
+      ctx.fillStyle='#93a9c4';ctx.font='12px Segoe UI,Arial';ctx.textAlign='center';ctx.fillText(`STRIP ${String(c+1).padStart(2,'0')}`,x,493);
+      lightCenters.push({x,avg});
+    }
+    ctx.fillStyle='#0a1421';ctx.strokeStyle='#38506b';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(W/2-95,505,190,42,5);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#bdcbe0';ctx.textAlign='center';ctx.font='700 14px Segoe UI,Arial';ctx.fillText('DJ BOOTH',W/2,531);
+    return lightCenters;
+  }
+  function updateStats(){
+    const bars=Math.floor(state.beat/4);$('bpmRead').textContent=state.bpm;
+    $('barRead').textContent=String((bars%(state.sceneBars*scenes.length))+1).padStart(2,'0')+' / '+(Math.floor(state.beat)%4+1);
+    $('sceneRead').textContent=sceneNow().name;
+    const beatsToNext=sceneBeats()-state.beat%sceneBeats();$('nextRead').textContent=state.mode==='auto'?(beatsToNext/4).toFixed(1)+' compassos':'Manual';
+    Array.from($('timeline').children).forEach((button,i)=>button.classList.toggle('active',state.mode==='auto'&&i===autoIndex()));
+  }
+  let previousTime=performance.now(),previousIntegerBeat=0,lastStats=0;
+  function tick(now){
+    const dt=Math.min(.08,(now-previousTime)/1000);previousTime=now;
+    if(state.running){
+      const before=Math.floor(state.beat);state.beat+=dt*state.bpm/60;state.elapsed+=dt;
+      const after=Math.floor(state.beat);
+      if(after>before){state.kick=1;if(after%4===1||after%4===3)state.clap=.58;}
+      state.kick=Math.max(0,state.kick-dt*5.0);
+      state.clap=Math.max(0,state.clap-dt*6.5);
+      state.drop=Math.max(0,state.drop-dt*1.8);
+    }
+    drawBackground();drawColumns();
+    if(now-lastStats>90){updateStats();lastStats=now;}
+    requestAnimationFrame(tick);
+  }
+  makeButtons();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
