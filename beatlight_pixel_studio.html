@@ -75,6 +75,18 @@
     .timeline button span { color:#8ea7c9; font-weight:500; font-size:9px; }
     .timeline button.active span { color:#d5eaff; }
     .foot { color:#8195b2; font-size:11px; line-height:1.6; margin:15px 4px; }
+    .geometry { margin-top:14px; }
+    .geometry-layout { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr); gap:16px; }
+    #geometryCanvas { background:#0a1220; touch-action:none; cursor:crosshair; border:1px solid #354761; }
+    .geometry-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+    .geometry-fields label { display:block; }
+    .geometry-fields input { display:block; width:100%; margin-top:5px; padding:9px; color:#e9f0ff; background:#17253a; border:1px solid #354761; border-radius:7px; font:inherit; }
+    .geometry-fields .wide { grid-column:1/-1; }
+    .geometry-list { display:flex; gap:6px; flex-wrap:wrap; margin:12px 0; max-height:120px; overflow:auto; }
+    .geometry-list button { padding:7px 10px; }
+    .geometry-status { min-height:36px; }
+    .geometry-status.error { color:#ffb7a3; }
+    @media(max-width:760px){.geometry-layout{grid-template-columns:1fr}}
     @media(max-width:760px){body{padding:10px}.layout{grid-template-columns:1fr}.panel{padding:12px}.status-grid{grid-template-columns:repeat(2,1fr)}.timeline-grid{grid-template-columns:repeat(4,1fr)}.ctrl{grid-template-columns:75px minmax(0,1fr) 42px}.stage-panel{padding:8px}}
   </style>
 </head>
@@ -90,13 +102,47 @@
     <p id="startupNotice" class="notice" role="status">Se a animação não iniciar, abra este arquivo diretamente no Chrome, Edge ou Firefox. Prévias de HTML podem bloquear JavaScript.</p>
     <noscript><p class="notice">Ative o JavaScript no navegador para executar a demonstração.</p></noscript>
     <canvas id="stage" width="1200" height="560" aria-label="Palco virtual de seis colunas de LED animadas"></canvas>
-    <div class="stage-meta"><span><strong>600 LEDs / barra</strong> · 200 pixels · 3 LEDs por pixel · <strong id="colorModeRead">RGB</strong></span><span id="totalRead">6 barras · 3.600 LEDs · 1.200 pixels</span></div>
+    <div class="stage-meta"><span><strong id="profileRead">600 LEDs / linha · 200 pixels</strong> · <strong id="colorModeRead">RGB</strong></span><span id="totalRead">6 linhas · 3.600 LEDs · 1.200 pixels</span></div>
     <div class="beat-meter"><span>COMPASSO</span><span id="beatMeter" style="display:flex;gap:8px" aria-label="Batidas do compasso"></span><span id="kickRead">Kick automático</span><span id="flashRead">2 flashes superiores · só no drop</span></div>
     <div class="status-grid">
       <div class="stat"><div class="stat-label">BPM simulado</div><div class="stat-value" id="bpmRead">130</div></div>
       <div class="stat"><div class="stat-label">Compasso / Beat</div><div class="stat-value" id="barRead">01 / 1</div></div>
       <div class="stat"><div class="stat-label">Cena atual</div><div class="stat-value small" id="sceneRead">Orgânico</div></div>
       <div class="stat"><div class="stat-label">Próxima transição</div><div class="stat-value small" id="nextRead">4 compassos</div></div>
+    </div>
+  </section>
+
+  <section class="panel geometry" aria-labelledby="geometryTitle">
+    <h2 id="geometryTitle">Geometria dos perfis de LED</h2>
+    <div class="geometry-layout">
+      <div>
+        <div class="button-row" style="margin-top:0"><button id="selectLineBtn" class="active" aria-pressed="true">Selecionar / mover pontas</button><button id="drawLineBtn" aria-pressed="false">+ Desenhar linha</button></div>
+        <p class="hint" id="geometryHelp">Selecione uma linha e arraste suas pontas, ou edite os valores ao lado. As setas indicam início → fim.</p>
+        <canvas id="geometryCanvas" width="1200" height="560" tabindex="0" aria-label="Editor de linhas. Use o formulário para definir coordenadas com o teclado."></canvas>
+        <div class="geometry-list" id="lineList" aria-label="Linhas do perfil"></div>
+        <p class="hint">Coordenadas do desenho: X de 0 a 1200 (esquerda → direita), Y de 0 a 560 (cima → baixo). A metragem é independente da escala visual. Os efeitos percorrem cada linha do início ao fim, na ordem da lista.</p>
+        <div class="button-row"><button id="exportGeometryBtn">Exportar geometria</button><button id="importGeometryBtn">Importar geometria</button></div>
+        <input id="importGeometryFile" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div>
+        <form id="lineForm">
+          <label for="lineSelect">Linha selecionada</label><select id="lineSelect"></select>
+          <div class="geometry-fields">
+            <label class="wide">Nome<input id="lineName" maxlength="48" required value="Linha 1"></label>
+            <label>Início X<input id="lineStartX" type="number" min="0" max="1200" step="any" required></label>
+            <label>Início Y<input id="lineStartY" type="number" min="0" max="560" step="any" required></label>
+            <label>Fim X<input id="lineEndX" type="number" min="0" max="1200" step="any" required></label>
+            <label>Fim Y<input id="lineEndY" type="number" min="0" max="560" step="any" required></label>
+            <label class="wide">Comprimento físico (metros)<input id="lineMeters" type="number" min="0.001" max="1000" step="any" required></label>
+            <label>Quantidade de LEDs<input id="lineLeds" type="number" min="1" max="4096" step="1" required></label>
+            <label>Pixels controláveis<input id="linePixels" type="number" min="1" max="2048" step="1" required></label>
+          </div>
+          <p class="hint" id="lineDensity"></p>
+          <button class="primary" type="submit">Aplicar alterações</button>
+        </form>
+        <div class="button-row"><button id="reverseLineBtn">Inverter início / fim</button><button id="deleteLineBtn">Excluir linha</button></div>
+        <p class="hint geometry-status" id="geometryStatus" role="status" aria-live="polite"></p>
+      </div>
     </div>
   </section>
 
@@ -150,8 +196,13 @@
         <div><label for="colorBehavior">Comportamento de cor</label><select id="colorBehavior"><option value="scene">Cores do efeito / paleta</option><option value="spectrum">Espectro RGB contínuo</option><option value="beat">Trocar cor a cada beat</option><option value="bar">Trocar cor por compasso</option><option value="solid">Cor personalizada fixa</option></select></div>
         <div><label for="solidColor">Cor personalizada</label><input id="solidColor" type="color" value="#ff0000" disabled></div>
         <div><label for="sceneBars">Compassos por cena</label><select id="sceneBars"><option value="2">2 compassos</option><option value="4" selected>4 compassos</option><option value="8">8 compassos</option><option value="16">16 compassos</option></select></div>
+<<<<<<< HEAD
         <div><label for="columns">Colunas</label><select id="columns"><option value="3">3 colunas</option><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select></div>
         <div><label>Resolução por barra</label><div class="spec">200 pixels × 3 LEDs = 600 LEDs</div></div>
+=======
+        <div><label for="columns">Modelo de colunas</label><select id="columns"><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select><button id="resetGeometryBtn" type="button" style="margin-top:7px">Recriar geometria em colunas</button></div>
+        <div><label>Resolução dos perfis</label><div class="spec" id="resolutionRead">Definida por linha no editor de geometria</div></div>
+>>>>>>> f009731cf2ea63f9afd2b597c62889c774079b4a
       </div>
       <fieldset class="white-controls" id="whiteControls" disabled>
         <legend>Canal branco · RGBW</legend>
@@ -175,7 +226,7 @@
       <p class="hint">Atalhos: <strong>Espaço</strong> pausa/reproduz; <strong>K</strong> dispara kick; <strong>C</strong> clap; <strong>D</strong> drop; <strong>N</strong> próxima cena.</p>
     </section>
   </div>
-  <p class="foot">Cada barra simula 600 LEDs agrupados em 200 pixels controláveis. Os três LEDs de cada pixel compartilham a mesma cor; o difusor suaviza a luz, como uma mangueira no escuro. Abra este HTML diretamente no navegador: a demonstração funciona offline, sem música, instalação ou hardware.</p>
+  <p class="foot">Cada linha tem seu próprio comprimento, LEDs e pixels controláveis. Os LEDs de um pixel compartilham a mesma cor; o difusor suaviza a luz. A geometria é salva neste navegador quando o armazenamento está disponível; exporte o JSON para guardar uma cópia. Abra este HTML diretamente no navegador: funciona offline, sem música, instalação ou hardware.</p>
 </main>
 <script>
 'use strict';
@@ -191,16 +242,13 @@
   const W = canvas.width, H = canvas.height;
   const PIXELS_PER_STRIP = 200, LEDS_PER_PIXEL = 3;
   const LEDS_PER_STRIP = PIXELS_PER_STRIP * LEDS_PER_PIXEL;
-  // Four independent linear R/G/B/W channels per pixel, shared by three LEDs.
-  const stripBuffers = Array.from({length:8}, () => new Float32Array(PIXELS_PER_STRIP * 4));
+  const geometryKey='beatlight.geometry.v1';
+  const defaultLines=n=>Array.from({length:n},(_,i)=>({name:`Linha ${i+1}`,start:{x:Math.round((146+(W-292)*i/Math.max(1,n-1))*10)/10,y:464},end:{x:Math.round((146+(W-292)*i/Math.max(1,n-1))*10)/10,y:76},meters:5,leds:LEDS_PER_STRIP,pixels:PIXELS_PER_STRIP}));
+  let lines=defaultLines(6),lineResources=[];
   const whiteTones={warm:[1,.73,.43],neutral:[1,1,1],cool:[.78,.88,1]};
   const lightLayer = document.createElement('canvas');
   lightLayer.width=W; lightLayer.height=H;
   const lightCtx=lightLayer.getContext('2d');
-  const stripTexture=document.createElement('canvas');
-  stripTexture.width=9; stripTexture.height=LEDS_PER_STRIP;
-  const textureCtx=stripTexture.getContext('2d');
-  const texture=textureCtx.createImageData(9,LEDS_PER_STRIP);
   const tubeProfile=[.10,.32,.65,.89,1,.89,.65,.32,.10];
   const scenes = [
     {id:'ambient',name:'Atmosfera',desc:'Respiração de luz na paleta escolhida, com gradientes lentos e movimentos suaves.'},
@@ -274,9 +322,13 @@
   }
   function transitionFraction(){const tr=playback.transition;return tr?clamp((state.elapsed-tr.start)/tr.duration):0;}
   function capturePattern(){
-    const n=state.columns,data=new Float32Array(n*PIXELS_PER_STRIP*4);
-    for(let c=0;c<n;c++)for(let j=0;j<PIXELS_PER_STRIP;j++)data.set(compositeSample(c,j/(PIXELS_PER_STRIP-1),n),(c*PIXELS_PER_STRIP+j)*4);
-    return {kind:'snapshot',data,columns:n};
+    const n=lines.length;
+    const strips=lines.map((line,c)=>{
+      const data=new Float32Array(line.pixels*4);
+      for(let j=0;j<line.pixels;j++)data.set(compositeSample(c,line.pixels===1?0:j/(line.pixels-1),n),j*4);
+      return data;
+    });
+    return {kind:'snapshot',strips,columns:n};
   }
   function beginTransition(to){
     if(!state.running||!playback.current){playback.current=to;playback.transition=null;}
@@ -370,12 +422,139 @@
   $('colorMode').onchange=e=>{state.colorMode=e.target.value;$('whiteControls').disabled=state.colorMode!=='rgbw';$('colorModeRead').textContent=state.colorMode.toUpperCase();};
   $('whiteTone').onchange=e=>{state.whiteTone=e.target.value;};
   $('palette').onchange=e=>{state.palette=e.target.value};
-  $('columns').onchange=e=>{state.columns=+e.target.value;updateStripInfo();};
-  function updateStripInfo(){
-    $('stageTitle').textContent=`PALCO · ${state.columns} MANGUEIRAS`;
-    $('totalRead').textContent=`${state.columns} barras · ${(state.columns*LEDS_PER_STRIP).toLocaleString('pt-BR')} LEDs · ${(state.columns*PIXELS_PER_STRIP).toLocaleString('pt-BR')} pixels`;
-    canvas.setAttribute('aria-label',`Palco virtual com ${state.columns} mangueiras animadas, cada uma com 600 LEDs em 200 pixels`);
+  const geometryCanvas=$('geometryCanvas'),geometryCtx=geometryCanvas.getContext('2d');
+  let selectedLine=0,geometryMode='select',pendingStart=null,pointerPreview=null,drag=null;
+  function geometryMessage(message,error=false){$('geometryStatus').textContent=message;$('geometryStatus').classList.toggle('error',error);}
+  function validateLines(candidate){
+    if(!Array.isArray(candidate)||candidate.length<1||candidate.length>32)throw new Error('Use entre 1 e 32 linhas.');
+    let leds=0,pixels=0;
+    const clean=candidate.map((line,i)=>{
+      if(!line||typeof line.name!=='string'||!line.name.trim()||line.name.length>48)throw new Error(`Linha ${i+1}: informe um nome com até 48 caracteres.`);
+      for(const point of [line.start,line.end])if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||point.x<0||point.x>W||point.y<0||point.y>H)throw new Error(`Linha ${i+1}: coordenadas fora do desenho.`);
+      if(Math.hypot(line.end.x-line.start.x,line.end.y-line.start.y)<1)throw new Error(`Linha ${i+1}: início e fim devem estar separados por pelo menos 1 unidade.`);
+      if(!Number.isFinite(line.meters)||line.meters<.001||line.meters>1000)throw new Error(`Linha ${i+1}: comprimento entre 0,001 e 1.000 metros.`);
+      if(!Number.isInteger(line.leds)||line.leds<1||line.leds>4096||!Number.isInteger(line.pixels)||line.pixels<1||line.pixels>2048||line.pixels>line.leds)throw new Error(`Linha ${i+1}: use 1–4.096 LEDs e 1–2.048 pixels, com no máximo um pixel por LED.`);
+      leds+=line.leds;pixels+=line.pixels;
+      return {name:line.name.trim(),start:{x:line.start.x,y:line.start.y},end:{x:line.end.x,y:line.end.y},meters:line.meters,leds:line.leds,pixels:line.pixels};
+    });
+    if(leds>32768||pixels>8192)throw new Error('Limite do palco: 32.768 LEDs e 8.192 pixels no total.');
+    return clean;
   }
+  function allocateLines(){
+    state.columns=lines.length;
+    lineResources=lines.map(line=>{
+      const textureCanvas=document.createElement('canvas');textureCanvas.width=9;textureCanvas.height=line.leds;
+      const context=textureCanvas.getContext('2d');
+      return {canvas:textureCanvas,context,texture:context.createImageData(9,line.leds),channels:new Float32Array(line.pixels*4)};
+    });
+  }
+  function persistGeometry(){
+    try{localStorage.setItem(geometryKey,JSON.stringify({version:1,lines}));return true;}catch{return false;}
+  }
+  function commitGeometry(candidate,index=selectedLine,message='Geometria atualizada.'){
+    try{const clean=validateLines(candidate);lines=clean;selectedLine=Math.max(0,Math.min(index,lines.length-1));allocateLines();updateStripInfo();refreshGeometry();geometryMessage(message+(persistGeometry()?' Salva neste navegador.':' Armazenamento indisponível; exporte uma cópia JSON.'));return true;}
+    catch(error){geometryMessage(error.message,true);return false;}
+  }
+  const formatNumber=value=>value.toLocaleString('pt-BR',{maximumFractionDigits:3});
+  function updateStripInfo(){
+    const leds=lines.reduce((sum,line)=>sum+line.leds,0),pixels=lines.reduce((sum,line)=>sum+line.pixels,0),meters=lines.reduce((sum,line)=>sum+line.meters,0);
+    $('stageTitle').textContent=`PALCO · ${lines.length} ${lines.length===1?'LINHA':'LINHAS'}`;
+    $('totalRead').textContent=`${lines.length} linhas · ${formatNumber(meters)} m · ${formatNumber(leds)} LEDs · ${formatNumber(pixels)} pixels`;
+    const uniform=lines.every(line=>line.leds===lines[0].leds&&line.pixels===lines[0].pixels);
+    $('profileRead').textContent=uniform?`${formatNumber(lines[0].leds)} LEDs / linha · ${formatNumber(lines[0].pixels)} pixels`:'LEDs e pixels definidos por linha';
+    $('resolutionRead').textContent=`${formatNumber(pixels)} pixels controláveis no palco`;
+    canvas.setAttribute('aria-label',`Palco virtual com ${lines.length} linhas animadas, ${leds} LEDs e ${pixels} pixels`);
+  }
+  function fillLineForm(){
+    const line=lines[selectedLine];
+    $('lineName').value=line.name;
+    for(const [id,value] of Object.entries({lineStartX:line.start.x,lineStartY:line.start.y,lineEndX:line.end.x,lineEndY:line.end.y,lineMeters:line.meters,lineLeds:line.leds,linePixels:line.pixels}))$(id).value=value;
+    const ratio=line.leds/line.pixels,low=Math.floor(ratio),high=Math.ceil(ratio);
+    $('lineDensity').textContent=`${formatNumber(line.leds/line.meters)} LEDs/m · ${formatNumber(line.pixels/line.meters)} pixels/m · ${low===high?low:`${low} a ${high}`} LEDs/pixel. LED 1 no início; LED ${line.leds} no fim.`;
+  }
+  function refreshGeometry(){
+    $('lineSelect').replaceChildren();$('lineList').replaceChildren();
+    lines.forEach((line,i)=>{
+      const label=`${i+1}. ${line.name}`;
+      const option=document.createElement('option');option.value=i;option.textContent=label;$('lineSelect').appendChild(option);
+      const button=document.createElement('button');button.textContent=label;button.classList.toggle('active',i===selectedLine);button.setAttribute('aria-pressed',i===selectedLine);button.onclick=()=>{selectedLine=i;refreshGeometry();};$('lineList').appendChild(button);
+    });
+    $('lineSelect').value=selectedLine;$('deleteLineBtn').disabled=lines.length===1;
+    fillLineForm();drawGeometry();
+  }
+  function setGeometryMode(mode){
+    geometryMode=mode;pendingStart=pointerPreview=null;
+    for(const [id,value] of [['selectLineBtn','select'],['drawLineBtn','draw']]){$(id).classList.toggle('active',value===mode);$(id).setAttribute('aria-pressed',value===mode);}
+    $('geometryHelp').textContent=mode==='draw'?'Clique no início e depois no fim da nova linha. Ela começa com 5 m, 600 LEDs e 200 pixels; ajuste os valores ao lado. Esc cancela.':'Selecione uma linha e arraste suas pontas, ou edite os valores ao lado. As setas indicam início → fim.';
+    drawGeometry();
+  }
+  function drawGeometry(){
+    if(!geometryCtx)return;
+    const g=geometryCtx;g.clearRect(0,0,W,H);g.lineWidth=1;g.strokeStyle='#1c2c40';
+    g.beginPath();for(let x=0;x<=W;x+=50){g.moveTo(x,0);g.lineTo(x,H);}for(let y=0;y<=H;y+=50){g.moveTo(0,y);g.lineTo(W,y);}g.stroke();
+    const drawLine=(line,index,preview=false)=>{
+      const {start:a,end:b}=line,active=index===selectedLine&&!preview,angle=Math.atan2(b.y-a.y,b.x-a.x);
+      g.strokeStyle=preview?'#ffc47f':active?'#79c7ff':'#526c8b';g.fillStyle=g.strokeStyle;g.lineWidth=active?5:3;
+      g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      g.beginPath();g.moveTo(mx+12*Math.cos(angle),my+12*Math.sin(angle));g.lineTo(mx-9*Math.cos(angle-.6),my-9*Math.sin(angle-.6));g.lineTo(mx-9*Math.cos(angle+.6),my-9*Math.sin(angle+.6));g.closePath();g.fill();
+      for(const point of [a,b]){g.beginPath();g.arc(point.x,point.y,active?8:5,0,Math.PI*2);g.fill();}
+      g.font='18px Segoe UI,Arial';g.textAlign='left';
+      g.fillText(preview?'Nova linha':`${index+1} · ${formatNumber(line.meters)} m`,clamp(mx+14,5,W-140),clamp(my-12,22,H-8));
+      if(active){g.font='16px Segoe UI,Arial';g.fillText('INÍCIO',clamp(a.x+12,5,W-75),clamp(a.y+23,20,H-5));g.fillText('FIM',clamp(b.x+12,5,W-50),clamp(b.y-12,20,H-5));}
+    };
+    lines.forEach((line,i)=>drawLine(drag&&drag.index===i?{...line,[drag.endpoint]:drag.point}:line,i));
+    if(pendingStart){drawLine({start:pendingStart,end:pointerPreview||pendingStart},-1,true);}
+  }
+  function canvasPoint(event){const rect=geometryCanvas.getBoundingClientRect();return {x:Math.round(clamp((event.clientX-rect.left)*W/rect.width,0,W)*10)/10,y:Math.round(clamp((event.clientY-rect.top)*H/rect.height,0,H)*10)/10};}
+  function lineDistance(point,line){const dx=line.end.x-line.start.x,dy=line.end.y-line.start.y,t=clamp(((point.x-line.start.x)*dx+(point.y-line.start.y)*dy)/(dx*dx+dy*dy));return Math.hypot(point.x-line.start.x-t*dx,point.y-line.start.y-t*dy);}
+  geometryCanvas.addEventListener('pointerdown',event=>{
+    if(event.button!==0||drag)return;
+    const point=canvasPoint(event);
+    if(geometryMode==='draw'){
+      if(!pendingStart){pendingStart=point;pointerPreview=point;drawGeometry();return;}
+      const candidate=[...lines,{name:`Linha ${lines.length+1}`,start:pendingStart,end:point,meters:5,leds:600,pixels:200}];
+      if(commitGeometry(candidate,lines.length,'Linha adicionada. Ajuste metragem, LEDs e pixels.'))setGeometryMode('select');
+      return;
+    }
+    const radius=14*W/geometryCanvas.getBoundingClientRect().width;
+    const selected=lines[selectedLine];
+    const endpoint=['start','end'].find(key=>Math.hypot(selected[key].x-point.x,selected[key].y-point.y)<=radius);
+    if(endpoint){drag={index:selectedLine,endpoint,point,pointerId:event.pointerId};geometryCanvas.setPointerCapture(event.pointerId);return;}
+    const nearest=lines.map((line,i)=>({i,d:lineDistance(point,line)})).sort((a,b)=>a.d-b.d)[0];
+    if(nearest.d<=radius){selectedLine=nearest.i;refreshGeometry();}
+  });
+  geometryCanvas.addEventListener('pointermove',event=>{const point=canvasPoint(event);if(drag&&drag.pointerId===event.pointerId){drag.point=point;drawGeometry();}else if(pendingStart){pointerPreview=point;drawGeometry();}});
+  geometryCanvas.addEventListener('pointerup',event=>{
+    if(!drag||drag.pointerId!==event.pointerId)return;
+    const moving=drag;drag=null;geometryCanvas.releasePointerCapture(event.pointerId);
+    const candidate=lines.map((line,i)=>i===moving.index?{...line,[moving.endpoint]:canvasPoint(event)}:line);
+    commitGeometry(candidate);drawGeometry();
+  });
+  geometryCanvas.addEventListener('pointercancel',()=>{drag=null;drawGeometry();});
+  geometryCanvas.addEventListener('lostpointercapture',()=>{if(drag){drag=null;drawGeometry();}});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){drag=null;setGeometryMode('select');}});
+  $('selectLineBtn').onclick=()=>setGeometryMode('select');$('drawLineBtn').onclick=()=>setGeometryMode('draw');
+  $('lineSelect').onchange=event=>{selectedLine=+event.target.value;refreshGeometry();};
+  $('lineForm').onsubmit=event=>{
+    event.preventDefault();
+    const line={name:$('lineName').value,start:{x:+$('lineStartX').value,y:+$('lineStartY').value},end:{x:+$('lineEndX').value,y:+$('lineEndY').value},meters:+$('lineMeters').value,leds:+$('lineLeds').value,pixels:+$('linePixels').value};
+    commitGeometry(lines.map((previous,i)=>i===selectedLine?line:previous));
+  };
+  $('reverseLineBtn').onclick=()=>commitGeometry(lines.map((line,i)=>i===selectedLine?{...line,start:line.end,end:line.start}:line),selectedLine,'Sentido da linha invertido.');
+  $('deleteLineBtn').onclick=()=>commitGeometry(lines.filter((_,i)=>i!==selectedLine),selectedLine,'Linha excluída.');
+  $('resetGeometryBtn').onclick=()=>{setGeometryMode('select');commitGeometry(defaultLines(+$('columns').value),0,'Modelo de colunas aplicado (5 m por linha).');};
+  $('exportGeometryBtn').onclick=()=>{
+    const url=URL.createObjectURL(new Blob([JSON.stringify({version:1,lines},null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='beatlight-geometria.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    geometryMessage('Geometria exportada com os valores aplicados.');
+  };
+  $('importGeometryBtn').onclick=()=>$('importGeometryFile').click();
+  $('importGeometryFile').onchange=async event=>{
+    const file=event.target.files[0];if(!file)return;
+    try{if(file.size>200000)throw new Error('Arquivo muito grande para uma geometria.');const data=JSON.parse(await file.text());if(data.version!==1)throw new Error('Versão de geometria não suportada.');if(commitGeometry(data.lines,0,'Geometria importada.'))setGeometryMode('select');}
+    catch(error){geometryMessage('Não foi possível importar: '+error.message,true);}finally{event.target.value='';}
+  };
   $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;playback.nextBeat=state.beat+sceneBeats();$('sceneBarsText').textContent=state.sceneBars};
   $('kickBtn').onclick=()=>audioEvent('kick');$('clapBtn').onclick=()=>audioEvent('clap');$('dropBtn').onclick=toggleDrop;
   function togglePlay(){state.running=!state.running;$('playBtn').textContent=state.running?'⏸ Pausar':'▶ Reproduzir';$('liveText').textContent=state.running?'EXECUTANDO':'PAUSADO';$('liveDot').classList.toggle('paused',!state.running);}
@@ -486,8 +665,8 @@
   function sampleDescriptor(d,c,u,n){
     if(d.kind==='snapshot'){
       const column=clamp(c/Math.max(1,n-1))*(d.columns-1),left=Math.floor(column),right=Math.min(d.columns-1,left+1);
-      const row=Math.round(clamp(u)*(PIXELS_PER_STRIP-1)),a=(left*PIXELS_PER_STRIP+row)*4,b=(right*PIXELS_PER_STRIP+row)*4;
-      return [0,1,2,3].map(i=>mix(d.data[a+i],d.data[b+i],column-left));
+      const a=d.strips[left],b=d.strips[right],rowA=Math.round(clamp(u)*(a.length/4-1))*4,rowB=Math.round(clamp(u)*(b.length/4-1))*4;
+      return [0,1,2,3].map(i=>mix(a[rowA+i],b[rowB+i],column-left));
     }
     if(d.kind==='dropseq')return sampleDrop(d,c,u,n);
     if(d.kind==='scene')return sampleScene(d.id,c,u,n);
@@ -536,39 +715,42 @@
     ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#536073';ctx.font='10px Segoe UI,Arial';ctx.textAlign='left';
     ctx.fillText(`MANGUEIRAS ${state.colorMode.toUpperCase()} / DIFUSOR FOSCO`,38,32);
-    ctx.textAlign='right';ctx.fillText('600 LEDs  ·  200 PX / BARRA',W-38,32);
+    ctx.textAlign='right';ctx.fillText(`${lines.length} LINHAS · ${formatNumber(lines.reduce((sum,line)=>sum+line.meters,0))} METROS`,W-38,32);
   }
   function drawColumns(){
-    const n=state.columns,start=146,end=W-146,spacing=(end-start)/(n-1),top=76,bottom=464,height=bottom-top,tubeWidth=10;
+    const n=lines.length,tubeWidth=10;
     lightCtx.clearRect(0,0,W,H);
+    lightCtx.globalCompositeOperation='screen';
     const whiteMix=state.colorMode==='rgbw'?state.white:0,whiteColor=whiteTones[state.whiteTone];
     for(let c=0;c<n;c++){
-      const x=start+spacing*c;
-      const channels=stripBuffers[c];
-      for(let pixel=0;pixel<PIXELS_PER_STRIP;pixel++){
-        const point=pixelValue(c,pixel/(PIXELS_PER_STRIP-1),n);
+      const line=lines[c],resource=lineResources[c],channels=resource.channels;
+      const dx=line.end.x-line.start.x,dy=line.end.y-line.start.y,length=Math.hypot(dx,dy);
+      for(let pixel=0;pixel<line.pixels;pixel++){
+        const point=pixelValue(c,line.pixels===1?0:pixel/(line.pixels-1),n);
         for(let channel=0;channel<3;channel++){
           channels[pixel*4+channel]=point.color[channel]/255*point.power*(1-whiteMix);
         }
         channels[pixel*4+3]=point.power*whiteMix;
       }
       // Composite the dedicated W emitter only for display; keep R/G/B/W separate.
-      // 600 texture rows = 600 physical LEDs, explicitly mapped 3:1 to pixels.
-      for(let led=0;led<LEDS_PER_STRIP;led++){
-        const pixel=Math.floor(led/LEDS_PER_PIXEL),row=LEDS_PER_STRIP-1-led,base=pixel*4;
+      // Each physical LED belongs to one contiguous controllable pixel group.
+      // Uneven ratios distribute the extra LEDs across groups in line order.
+      for(let led=0;led<line.leds;led++){
+        const pixel=Math.floor(led*line.pixels/line.leds),row=led,base=pixel*4;
         const display=[0,1,2].map(channel=>255*(1-Math.exp(-4*(channels[base+channel]+channels[base+3]*whiteColor[channel]))));
         for(let across=0;across<9;across++){
           const offset=(row*9+across)*4,profile=tubeProfile[across];
-          texture.data[offset]=display[0]*profile;
-          texture.data[offset+1]=display[1]*profile;
-          texture.data[offset+2]=display[2]*profile;
-          texture.data[offset+3]=255;
+          resource.texture.data[offset]=display[0]*profile;
+          resource.texture.data[offset+1]=display[1]*profile;
+          resource.texture.data[offset+2]=display[2]*profile;
+          resource.texture.data[offset+3]=255;
         }
       }
-      textureCtx.putImageData(texture,0,0);
-      lightCtx.drawImage(stripTexture,x-tubeWidth/2,top,tubeWidth,height);
+      resource.context.putImageData(resource.texture,0,0);
+      lightCtx.save();lightCtx.translate(line.start.x,line.start.y);lightCtx.rotate(Math.atan2(dy,dx)-Math.PI/2);
+      lightCtx.drawImage(resource.canvas,-tubeWidth/2,0,tubeWidth,length);lightCtx.restore();
       ctx.fillStyle='#657183';ctx.font='11px Segoe UI,Arial';ctx.textAlign='center';
-      ctx.fillText(String(c+1).padStart(2,'0'),x,520);
+      ctx.fillText(String(c+1).padStart(2,'0'),clamp(line.start.x,15,W-15),clamp(line.start.y+30,50,H-10));
     }
     ctx.save();ctx.globalCompositeOperation='screen';
     // Broad spill, close diffusion, then the cylindrical luminous core.
@@ -577,7 +759,7 @@
     ctx.filter='none';ctx.drawImage(lightLayer,0,0);
     // A restrained reflection grounds the tubes on the dark stage floor.
     ctx.save();ctx.translate(0,486);ctx.scale(1,-.17);
-    ctx.globalAlpha=.18;ctx.filter='blur(9px)';ctx.drawImage(lightLayer,0,-bottom);
+    ctx.globalAlpha=.18;ctx.filter='blur(9px)';ctx.drawImage(lightLayer,0,-464);
     ctx.restore();ctx.restore();
   }
   function strobeOutput(){
@@ -668,6 +850,12 @@
     requestAnimationFrame(tick);
   }
   playback.current=organicDescriptor();
+  try{
+    const saved=localStorage.getItem(geometryKey);
+    if(saved){const data=JSON.parse(saved);if(data.version!==1)throw new Error('Versão inválida');lines=validateLines(data.lines);geometryMessage('Geometria recuperada deste navegador.');}
+    else geometryMessage('Modelo inicial: 5 m, 600 LEDs e 200 pixels por linha.');
+  }catch{geometryMessage('Não foi possível recuperar a geometria local. Use o modelo inicial ou importe um JSON.',true);}
+  allocateLines();refreshGeometry();
   makeButtons();makeBeatMeter();updateStripInfo();updateStats();
   $('startupNotice').hidden=true;$('liveText').textContent='EXECUTANDO';
   requestAnimationFrame(tick);
