@@ -4,6 +4,12 @@ Demonstração visual de mangueiras de LED no escuro, com vinte efeitos e ritmo 
 
 Abra `beatlight_pixel_studio.html` diretamente no Chrome, Edge ou Firefox. A apresentação inicia automaticamente. Se uma prévia do editor ou do repositório mostrar uma imagem parada ou um aviso sobre JavaScript, baixe/abra o arquivo no navegador.
 
+Para criar curvas, clique em **Desenhar curva**, marque o início e o fim no editor e arraste os quadrados laranja **C1/C2**. Eles controlam a direção e a curvatura de cada ponta. Também é possível editar essas coordenadas pelo formulário, ou trocar **Formato** entre reta e curva e aplicar. Combine trechos com pontas nas mesmas coordenadas para construir geometrias maiores. Os LEDs são distribuídos uniformemente ao longo do comprimento visual da curva; os efeitos, RGBW e flashes continuam disponíveis.
+
+**∞ Aplicar modelo infinito** prepara quatro curvas conectadas e suaves, cada uma com **5 m, 600 LEDs e 200 pixels**: 20 m, 2.400 LEDs e 800 pixels no total. O botão substitui a geometria atual. **Desfazer geometria** recupera até 20 alterações durante a sessão, incluindo a aplicação de modelos, importações e arrastes. Há também um arquivo pronto em [templates/infinito.json](templates/infinito.json), que pode ser aberto em **Importar geometria**.
+
+Curvas são salvas e exportadas no formato JSON versão 2, com `type: "bezier"`, `control1` e `control2`, além dos dados físicos e das pontas. Geometrias só com retas continuam sendo exportadas na versão 1; ambas as versões são aceitas ao importar e ao recuperar o salvamento local.
+
 O modelo inicial tem seis linhas verticais, cada uma com **5 metros, 600 LEDs e 200 pixels controláveis**, com três LEDs compartilhando a cor de cada pixel. O editor permite criar perfis com outras posições, comprimentos e resoluções. O difusor suaviza os pontos de luz; o brilho pode ser reduzido até apagar a emissão.
 
 Em **Geometria dos perfis de LED**, clique em **Desenhar linha** e depois em dois pontos do desenho para marcar o início e o fim. A nova linha começa com 5 m, 600 LEDs e 200 pixels. Selecione uma linha pela lista ou pelo desenho para editar nome, coordenadas, metragem, LEDs e pixels e clique em **Aplicar alterações**. Também é possível arrastar as pontas da linha selecionada, inverter seu sentido e excluir linhas. Esc cancela um desenho ou arraste em andamento. A última linha não pode ser excluída.

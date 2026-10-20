@@ -39,7 +39,7 @@ function studio({ storage = new Map(), storageUnavailable = false } = {}) {
       if (this.context) return this.context;
       const calls = [];
       const context = { calls, createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }) };
-      for (const name of ['clearRect', 'fillRect', 'fillText', 'beginPath', 'closePath', 'moveTo', 'lineTo', 'stroke', 'arc', 'fill', 'save', 'restore', 'translate', 'rotate', 'scale', 'drawImage', 'putImageData']) context[name] = (...args) => calls.push({ name, args });
+      for (const name of ['clearRect', 'fillRect', 'fillText', 'beginPath', 'closePath', 'moveTo', 'lineTo', 'bezierCurveTo', 'stroke', 'arc', 'fill', 'save', 'restore', 'translate', 'rotate', 'scale', 'drawImage', 'putImageData']) context[name] = (...args) => calls.push({ name, args });
       this.context = context; canvases.push(this); return context;
     }
   }
@@ -57,7 +57,7 @@ function studio({ storage = new Map(), storageUnavailable = false } = {}) {
     performance: { now: () => 0 }, requestAnimationFrame: callback => frames.push(callback), setTimeout() {}, console: { error: (...args) => errors.push(args) }
   });
   // Read internals only in the isolated test copy, leaving the HTML API private.
-  vm.runInContext(source.replace(/\}\)\(\);\s*$/, 'globalThis.inspect={get lines(){return lines},get resources(){return lineResources},state,drawColumns,capturePattern,sampleDescriptor,selectMode};})();'), context);
+  vm.runInContext(source.replace(/\}\)\(\);\s*$/, 'globalThis.inspect={get lines(){return lines},get resources(){return lineResources},state,drawColumns,capturePattern,sampleDescriptor,selectMode,pathPoint,measurePath,pointAtDistance,infinityLines};})();'), context);
   const $ = id => elements.get(id);
   const importLines = async candidate => {
     $('importGeometryFile').files = [{ size: 1000, text: async () => JSON.stringify({ version: 1, lines: candidate }) }];
@@ -185,4 +185,91 @@ test('interrupted transitions retain each line resolution and survive a geometry
   app.$('deleteLineBtn').click(); assert.equal(api.lines.length, 1);
   app.$('columns').value = '4'; app.$('resetGeometryBtn').click();
   assert.equal(api.lines.length, 4); assert.equal(api.state.columns, 4);
+});
+
+test('infinity template closes smoothly, exports version 2 and survives reload and undo', async () => {
+  const app = studio(), { $, api } = app, initial = plain(api.lines);
+  $('infinityTemplateBtn').click();
+  assert.equal(api.lines.length, 4);
+  assert.match($('totalRead').textContent, /20 m.*2\.400 LEDs.*800 pixels/);
+  for (let i = 0; i < 4; i++) {
+    const a = api.lines[i], b = api.lines[(i + 1) % 4];
+    assert.deepEqual(plain(a.end), plain(b.start));
+    assert.deepEqual([a.end.x - a.control2.x, a.end.y - a.control2.y], [b.control1.x - b.start.x, b.control1.y - b.start.y]);
+    assert.equal(a.leds, 600); assert.equal(a.pixels, 200);
+  }
+  $('exportGeometryBtn').click();
+  const exported = JSON.parse(await app.blobs.get(app.downloads[0].href).text());
+  assert.equal(exported.version, 2);
+  assert.deepEqual(exported, JSON.parse(fs.readFileSync(path.join(__dirname, '../templates/infinito.json'), 'utf8')));
+  assert.deepEqual(plain(studio({ storage: app.storage }).api.lines), exported.lines);
+  const imported = studio();
+  imported.$('importGeometryFile').files = [{ size: 2000, text: async () => JSON.stringify(exported) }];
+  await imported.$('importGeometryFile').dispatch('change');
+  assert.deepEqual(plain(imported.api.lines), exported.lines);
+  $('undoGeometryBtn').click();
+  assert.deepEqual(plain(api.lines), initial);
+  assert.equal($('undoGeometryBtn').disabled, true);
+});
+
+test('curve creation, control dragging, reversal and conversion preserve expected shape', () => {
+  const { $, api } = studio(), canvas = $('geometryCanvas');
+  $('drawCurveBtn').click();
+  canvas.dispatch('pointerdown', { clientX: 50, clientY: 50 });
+  canvas.dispatch('pointermove', { clientX: 400, clientY: 150 });
+  canvas.dispatch('pointerdown', { clientX: 400, clientY: 150 });
+  assert.equal(api.lines[6].type, 'bezier');
+  assert.equal($('curveFields').hidden, false);
+  const c1 = plain(api.lines[6].control1);
+  canvas.dispatch('pointerdown', { clientX: c1.x / 2, clientY: c1.y / 2 });
+  canvas.dispatch('pointermove', { clientX: 150, clientY: 230 });
+  canvas.dispatch('pointercancel');
+  assert.deepEqual(plain(api.lines[6].control1), c1);
+  canvas.dispatch('pointerdown', { clientX: c1.x / 2, clientY: c1.y / 2 });
+  canvas.dispatch('pointerup', { clientX: 150, clientY: 230 });
+  assert.deepEqual(plain(api.lines[6].control1), { x: 300, y: 460 });
+  const before = plain(api.lines[6]);
+  $('reverseLineBtn').click();
+  for (let i = 0; i <= 10; i++) {
+    const a = api.pathPoint(before, i / 10), b = api.pathPoint(api.lines[6], 1 - i / 10);
+    assert.ok(Math.hypot(a.x - b.x, a.y - b.y) < 1e-9);
+  }
+  $('lineType').value = 'line'; $('lineType').dispatch('change'); $('lineForm').dispatch('submit');
+  assert.equal(api.lines[6].type, undefined); assert.equal($('curveFields').hidden, true);
+  $('lineType').value = 'bezier'; $('lineType').dispatch('change'); $('lineForm').dispatch('submit');
+  assert.equal(api.lines[6].type, 'bezier');
+});
+
+test('curve validation rejects corrupt handles atomically and accepts nondegenerate closed curves', async () => {
+  const app = studio(), { $, api } = app;
+  $('infinityTemplateBtn').click();
+  const saved = app.storage.get('beatlight.geometry.v1'), curve = plain(api.lines[0]);
+  for (const bad of [{ ...curve, control1: undefined }, { ...curve, control2: { x: 1201, y: 10 } }, { ...curve, type: 'unknown' }]) {
+    await app.importLines([bad]);
+    assert.equal(app.storage.get('beatlight.geometry.v1'), saved);
+    assert.ok($('geometryStatus').classList.contains('error'));
+  }
+  await app.importLines([{ ...curve, end: curve.start }]);
+  assert.equal(api.lines.length, 1);
+  api.drawColumns(); assert.ok([...api.resources[0].channels].every(Number.isFinite));
+});
+
+test('curved render follows equal arc distances, keeps RGBW channels and extinguishes at zero brightness', () => {
+  const app = studio(), { $, api } = app;
+  $('infinityTemplateBtn').click();
+  const route = api.resources[0].route;
+  const lengths = route.slice(1).map((p, i) => Math.hypot(p.x - route[i].x, p.y - route[i].y));
+  assert.ok(Math.max(...lengths) / Math.min(...lengths) < 1.01);
+  assert.ok(route.some(p => p.y > 400));
+  api.state.colorMode = 'rgbw'; api.state.white = 1; api.state.running = false; api.selectMode('ambient');
+  api.drawColumns();
+  for (const r of api.resources) {
+    assert.ok([...r.channels].some(v => v > 0));
+    assert.ok([...r.channels].every((v, i) => Number.isFinite(v) && (i % 4 === 3 || v === 0)));
+  }
+  const light = app.canvases.find(c => c.context.calls.some(call => call.name === 'drawImage' && call.args.length === 9));
+  assert.ok(light);
+  assert.ok(light.context.calls.filter(c => c.name === 'drawImage').every(c => c.args.slice(1).every(Number.isFinite)));
+  api.state.brightness = 0; api.drawColumns();
+  assert.ok(api.resources.every(r => [...r.channels].every(v => v === 0)));
 });

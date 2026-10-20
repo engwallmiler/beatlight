@@ -82,6 +82,7 @@
     .geometry-fields label { display:block; }
     .geometry-fields input { display:block; width:100%; margin-top:5px; padding:9px; color:#e9f0ff; background:#17253a; border:1px solid #354761; border-radius:7px; font:inherit; }
     .geometry-fields .wide { grid-column:1/-1; }
+    #curveFields[hidden] { display:none; }
     .geometry-list { display:flex; gap:6px; flex-wrap:wrap; margin:12px 0; max-height:120px; overflow:auto; }
     .geometry-list button { padding:7px 10px; }
     .geometry-status { min-height:36px; }
@@ -116,9 +117,11 @@
     <h2 id="geometryTitle">Geometria dos perfis de LED</h2>
     <div class="geometry-layout">
       <div>
-        <div class="button-row" style="margin-top:0"><button id="selectLineBtn" class="active" aria-pressed="true">Selecionar / mover pontas</button><button id="drawLineBtn" aria-pressed="false">+ Desenhar linha</button></div>
+        <div class="button-row" style="margin-top:0"><button id="selectLineBtn" class="active" aria-pressed="true">Selecionar / ajustar</button><button id="drawLineBtn" aria-pressed="false">+ Desenhar linha</button><button id="drawCurveBtn" aria-pressed="false">+ Desenhar curva</button></div>
+        <div class="button-row"><button id="infinityTemplateBtn">∞ Aplicar modelo infinito</button><button id="undoGeometryBtn" disabled>Desfazer geometria</button></div>
+        <p class="hint">O modelo infinito substitui o desenho por quatro curvas de 5 m, 600 LEDs e 200 pixels cada. Desfazer recupera a geometria anterior.</p>
         <p class="hint" id="geometryHelp">Selecione uma linha e arraste suas pontas, ou edite os valores ao lado. As setas indicam início → fim.</p>
-        <canvas id="geometryCanvas" width="1200" height="560" tabindex="0" aria-label="Editor de linhas. Use o formulário para definir coordenadas com o teclado."></canvas>
+        <canvas id="geometryCanvas" width="1200" height="560" tabindex="0" aria-label="Editor de linhas e curvas com controles C1 e C2. Use o formulário para definir coordenadas com o teclado."></canvas>
         <div class="geometry-list" id="lineList" aria-label="Linhas do perfil"></div>
         <p class="hint">Coordenadas do desenho: X de 0 a 1200 (esquerda → direita), Y de 0 a 560 (cima → baixo). A metragem é independente da escala visual. Os efeitos percorrem cada linha do início ao fim, na ordem da lista.</p>
         <div class="button-row"><button id="exportGeometryBtn">Exportar geometria</button><button id="importGeometryBtn">Importar geometria</button></div>
@@ -129,10 +132,18 @@
           <label for="lineSelect">Linha selecionada</label><select id="lineSelect"></select>
           <div class="geometry-fields">
             <label class="wide">Nome<input id="lineName" maxlength="48" required value="Linha 1"></label>
+            <label class="wide">Formato<select id="lineType"><option value="line">Linha reta</option><option value="bezier">Curva Bézier</option></select></label>
             <label>Início X<input id="lineStartX" type="number" min="0" max="1200" step="any" required></label>
             <label>Início Y<input id="lineStartY" type="number" min="0" max="560" step="any" required></label>
             <label>Fim X<input id="lineEndX" type="number" min="0" max="1200" step="any" required></label>
             <label>Fim Y<input id="lineEndY" type="number" min="0" max="560" step="any" required></label>
+            <div class="geometry-fields wide" id="curveFields" hidden>
+              <label>Controle C1 · X<input id="lineControl1X" type="number" min="0" max="1200" step="any" required disabled></label>
+              <label>Controle C1 · Y<input id="lineControl1Y" type="number" min="0" max="560" step="any" required disabled></label>
+              <label>Controle C2 · X<input id="lineControl2X" type="number" min="0" max="1200" step="any" required disabled></label>
+              <label>Controle C2 · Y<input id="lineControl2Y" type="number" min="0" max="560" step="any" required disabled></label>
+              <p class="hint wide">Arraste os quadrados laranja C1/C2 para moldar a curva, ou ajuste suas coordenadas aqui.</p>
+            </div>
             <label class="wide">Comprimento físico (metros)<input id="lineMeters" type="number" min="0.001" max="1000" step="any" required></label>
             <label>Quantidade de LEDs<input id="lineLeds" type="number" min="1" max="4096" step="1" required></label>
             <label>Pixels controláveis<input id="linePixels" type="number" min="1" max="2048" step="1" required></label>
@@ -196,13 +207,8 @@
         <div><label for="colorBehavior">Comportamento de cor</label><select id="colorBehavior"><option value="scene">Cores do efeito / paleta</option><option value="spectrum">Espectro RGB contínuo</option><option value="beat">Trocar cor a cada beat</option><option value="bar">Trocar cor por compasso</option><option value="solid">Cor personalizada fixa</option></select></div>
         <div><label for="solidColor">Cor personalizada</label><input id="solidColor" type="color" value="#ff0000" disabled></div>
         <div><label for="sceneBars">Compassos por cena</label><select id="sceneBars"><option value="2">2 compassos</option><option value="4" selected>4 compassos</option><option value="8">8 compassos</option><option value="16">16 compassos</option></select></div>
-<<<<<<< HEAD
-        <div><label for="columns">Colunas</label><select id="columns"><option value="3">3 colunas</option><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select></div>
-        <div><label>Resolução por barra</label><div class="spec">200 pixels × 3 LEDs = 600 LEDs</div></div>
-=======
-        <div><label for="columns">Modelo de colunas</label><select id="columns"><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select><button id="resetGeometryBtn" type="button" style="margin-top:7px">Recriar geometria em colunas</button></div>
+        <div><label for="columns">Modelo de colunas</label><select id="columns"><option value="3">3 colunas</option><option value="4">4 colunas</option><option value="5">5 colunas</option><option value="6" selected>6 colunas</option><option value="8">8 colunas</option></select><button id="resetGeometryBtn" type="button" style="margin-top:7px">Recriar geometria em colunas</button></div>
         <div><label>Resolução dos perfis</label><div class="spec" id="resolutionRead">Definida por linha no editor de geometria</div></div>
->>>>>>> f009731cf2ea63f9afd2b597c62889c774079b4a
       </div>
       <fieldset class="white-controls" id="whiteControls" disabled>
         <legend>Canal branco · RGBW</legend>
@@ -244,6 +250,12 @@
   const LEDS_PER_STRIP = PIXELS_PER_STRIP * LEDS_PER_PIXEL;
   const geometryKey='beatlight.geometry.v1';
   const defaultLines=n=>Array.from({length:n},(_,i)=>({name:`Linha ${i+1}`,start:{x:Math.round((146+(W-292)*i/Math.max(1,n-1))*10)/10,y:464},end:{x:Math.round((146+(W-292)*i/Math.max(1,n-1))*10)/10,y:76},meters:5,leds:LEDS_PER_STRIP,pixels:PIXELS_PER_STRIP}));
+  const infinityLines=()=>[
+    [600,280,800,500,980,500,980,280],
+    [980,280,980,60,800,60,600,280],
+    [600,280,400,500,220,500,220,280],
+    [220,280,220,60,400,60,600,280]
+  ].map((p,i)=>({name:`Infinito ${i+1}`,type:'bezier',start:{x:p[0],y:p[1]},control1:{x:p[2],y:p[3]},control2:{x:p[4],y:p[5]},end:{x:p[6],y:p[7]},meters:5,leds:600,pixels:200}));
   let lines=defaultLines(6),lineResources=[];
   const whiteTones={warm:[1,.73,.43],neutral:[1,1,1],cool:[.78,.88,1]};
   const lightLayer = document.createElement('canvas');
@@ -424,18 +436,46 @@
   $('palette').onchange=e=>{state.palette=e.target.value};
   const geometryCanvas=$('geometryCanvas'),geometryCtx=geometryCanvas.getContext('2d');
   let selectedLine=0,geometryMode='select',pendingStart=null,pointerPreview=null,drag=null;
+  const geometryHistory=[];
+  function defaultControls(a,b){
+    const dx=b.x-a.x,dy=b.y-a.y,bend=Math.min(120,Math.hypot(dx,dy)*.3),length=Math.hypot(dx,dy)||1;
+    return {control1:{x:clamp(a.x+dx/3-dy/length*bend,0,W),y:clamp(a.y+dy/3+dx/length*bend,0,H)},control2:{x:clamp(a.x+dx*2/3-dy/length*bend,0,W),y:clamp(a.y+dy*2/3+dx/length*bend,0,H)}};
+  }
+  function pathPoint(line,t){
+    if(line.type!=='bezier')return {x:mix(line.start.x,line.end.x,t),y:mix(line.start.y,line.end.y,t)};
+    const s=1-t;
+    return {x:s**3*line.start.x+3*s*s*t*line.control1.x+3*s*t*t*line.control2.x+t**3*line.end.x,y:s**3*line.start.y+3*s*s*t*line.control1.y+3*s*t*t*line.control2.y+t**3*line.end.y};
+  }
+  function measurePath(line){
+    const points=[{...line.start,distance:0}],count=line.type==='bezier'?256:1;let length=0;
+    for(let i=1;i<=count;i++){const p=pathPoint(line,i/count),last=points[i-1];length+=Math.hypot(p.x-last.x,p.y-last.y);points.push({...p,distance:length});}
+    return {points,length};
+  }
+  function pointAtDistance(path,fraction){
+    const distance=clamp(fraction)*path.length,points=path.points;
+    let lo=0,hi=points.length-1;
+    while(hi-lo>1){const mid=(lo+hi)>>1;if(points[mid].distance<distance)lo=mid;else hi=mid;}
+    const a=points[lo],b=points[hi],t=(distance-a.distance)/(b.distance-a.distance||1);
+    return {x:mix(a.x,b.x,t),y:mix(a.y,b.y,t)};
+  }
+  function tracePath(g,line){
+    g.moveTo(line.start.x,line.start.y);
+    if(line.type==='bezier')g.bezierCurveTo(line.control1.x,line.control1.y,line.control2.x,line.control2.y,line.end.x,line.end.y);
+    else g.lineTo(line.end.x,line.end.y);
+  }
   function geometryMessage(message,error=false){$('geometryStatus').textContent=message;$('geometryStatus').classList.toggle('error',error);}
   function validateLines(candidate){
     if(!Array.isArray(candidate)||candidate.length<1||candidate.length>32)throw new Error('Use entre 1 e 32 linhas.');
     let leds=0,pixels=0;
     const clean=candidate.map((line,i)=>{
       if(!line||typeof line.name!=='string'||!line.name.trim()||line.name.length>48)throw new Error(`Linha ${i+1}: informe um nome com até 48 caracteres.`);
-      for(const point of [line.start,line.end])if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||point.x<0||point.x>W||point.y<0||point.y>H)throw new Error(`Linha ${i+1}: coordenadas fora do desenho.`);
-      if(Math.hypot(line.end.x-line.start.x,line.end.y-line.start.y)<1)throw new Error(`Linha ${i+1}: início e fim devem estar separados por pelo menos 1 unidade.`);
+      if(line.type!==undefined&&!['line','bezier'].includes(line.type))throw new Error(`Linha ${i+1}: formato desconhecido.`);
+      for(const point of [line.start,line.end,...(line.type==='bezier'?[line.control1,line.control2]:[])])if(!point||!Number.isFinite(point.x)||!Number.isFinite(point.y)||point.x<0||point.x>W||point.y<0||point.y>H)throw new Error(`Linha ${i+1}: coordenadas fora do desenho.`);
+      if(measurePath(line).length<1)throw new Error(`Linha ${i+1}: o trajeto deve ter pelo menos 1 unidade de comprimento.`);
       if(!Number.isFinite(line.meters)||line.meters<.001||line.meters>1000)throw new Error(`Linha ${i+1}: comprimento entre 0,001 e 1.000 metros.`);
       if(!Number.isInteger(line.leds)||line.leds<1||line.leds>4096||!Number.isInteger(line.pixels)||line.pixels<1||line.pixels>2048||line.pixels>line.leds)throw new Error(`Linha ${i+1}: use 1–4.096 LEDs e 1–2.048 pixels, com no máximo um pixel por LED.`);
       leds+=line.leds;pixels+=line.pixels;
-      return {name:line.name.trim(),start:{x:line.start.x,y:line.start.y},end:{x:line.end.x,y:line.end.y},meters:line.meters,leds:line.leds,pixels:line.pixels};
+      return {name:line.name.trim(),start:{x:line.start.x,y:line.start.y},end:{x:line.end.x,y:line.end.y},meters:line.meters,leds:line.leds,pixels:line.pixels,...(line.type==='bezier'?{type:'bezier',control1:{...line.control1},control2:{...line.control2}}:{})};
     });
     if(leds>32768||pixels>8192)throw new Error('Limite do palco: 32.768 LEDs e 8.192 pixels no total.');
     return clean;
@@ -445,14 +485,17 @@
     lineResources=lines.map(line=>{
       const textureCanvas=document.createElement('canvas');textureCanvas.width=9;textureCanvas.height=line.leds;
       const context=textureCanvas.getContext('2d');
-      return {canvas:textureCanvas,context,texture:context.createImageData(9,line.leds),channels:new Float32Array(line.pixels*4)};
+      const path=measurePath(line),count=line.type==='bezier'?Math.ceil(path.length/4):1;
+      const route=Array.from({length:count+1},(_,i)=>pointAtDistance(path,i/count));
+      return {canvas:textureCanvas,context,texture:context.createImageData(9,line.leds),channels:new Float32Array(line.pixels*4),path,route};
     });
   }
   function persistGeometry(){
-    try{localStorage.setItem(geometryKey,JSON.stringify({version:1,lines}));return true;}catch{return false;}
+    try{localStorage.setItem(geometryKey,JSON.stringify(geometryData()));return true;}catch{return false;}
   }
+  const geometryData=()=>({version:lines.some(line=>line.type==='bezier')?2:1,lines});
   function commitGeometry(candidate,index=selectedLine,message='Geometria atualizada.'){
-    try{const clean=validateLines(candidate);lines=clean;selectedLine=Math.max(0,Math.min(index,lines.length-1));allocateLines();updateStripInfo();refreshGeometry();geometryMessage(message+(persistGeometry()?' Salva neste navegador.':' Armazenamento indisponível; exporte uma cópia JSON.'));return true;}
+    try{const clean=validateLines(candidate);geometryHistory.push({lines,selectedLine});if(geometryHistory.length>20)geometryHistory.shift();lines=clean;selectedLine=Math.max(0,Math.min(index,lines.length-1));allocateLines();updateStripInfo();refreshGeometry();geometryMessage(message+(persistGeometry()?' Salva neste navegador.':' Armazenamento indisponível; exporte uma cópia JSON.'));return true;}
     catch(error){geometryMessage(error.message,true);return false;}
   }
   const formatNumber=value=>value.toLocaleString('pt-BR',{maximumFractionDigits:3});
@@ -468,9 +511,17 @@
   function fillLineForm(){
     const line=lines[selectedLine];
     $('lineName').value=line.name;
+    $('lineType').value=line.type==='bezier'?'bezier':'line';
+    const controls=line.type==='bezier'?line:defaultControls(line.start,line.end);
+    for(const [id,value] of Object.entries({lineControl1X:controls.control1.x,lineControl1Y:controls.control1.y,lineControl2X:controls.control2.x,lineControl2Y:controls.control2.y}))$(id).value=value;
+    toggleCurveFields();
     for(const [id,value] of Object.entries({lineStartX:line.start.x,lineStartY:line.start.y,lineEndX:line.end.x,lineEndY:line.end.y,lineMeters:line.meters,lineLeds:line.leds,linePixels:line.pixels}))$(id).value=value;
     const ratio=line.leds/line.pixels,low=Math.floor(ratio),high=Math.ceil(ratio);
     $('lineDensity').textContent=`${formatNumber(line.leds/line.meters)} LEDs/m · ${formatNumber(line.pixels/line.meters)} pixels/m · ${low===high?low:`${low} a ${high}`} LEDs/pixel. LED 1 no início; LED ${line.leds} no fim.`;
+  }
+  function toggleCurveFields(){
+    const curved=$('lineType').value==='bezier';$('curveFields').hidden=!curved;
+    for(const id of ['lineControl1X','lineControl1Y','lineControl2X','lineControl2Y'])$(id).disabled=!curved;
   }
   function refreshGeometry(){
     $('lineSelect').replaceChildren();$('lineList').replaceChildren();
@@ -480,12 +531,14 @@
       const button=document.createElement('button');button.textContent=label;button.classList.toggle('active',i===selectedLine);button.setAttribute('aria-pressed',i===selectedLine);button.onclick=()=>{selectedLine=i;refreshGeometry();};$('lineList').appendChild(button);
     });
     $('lineSelect').value=selectedLine;$('deleteLineBtn').disabled=lines.length===1;
+    $('undoGeometryBtn').disabled=geometryHistory.length===0;
     fillLineForm();drawGeometry();
   }
   function setGeometryMode(mode){
+    if(drag){const id=drag.pointerId;drag=null;geometryCanvas.releasePointerCapture(id);}
     geometryMode=mode;pendingStart=pointerPreview=null;
-    for(const [id,value] of [['selectLineBtn','select'],['drawLineBtn','draw']]){$(id).classList.toggle('active',value===mode);$(id).setAttribute('aria-pressed',value===mode);}
-    $('geometryHelp').textContent=mode==='draw'?'Clique no início e depois no fim da nova linha. Ela começa com 5 m, 600 LEDs e 200 pixels; ajuste os valores ao lado. Esc cancela.':'Selecione uma linha e arraste suas pontas, ou edite os valores ao lado. As setas indicam início → fim.';
+    for(const [id,value] of [['selectLineBtn','select'],['drawLineBtn','draw'],['drawCurveBtn','curve']]){$(id).classList.toggle('active',value===mode);$(id).setAttribute('aria-pressed',value===mode);}
+    $('geometryHelp').textContent=mode==='draw'?'Clique no início e depois no fim da nova linha. Ela começa com 5 m, 600 LEDs e 200 pixels; ajuste os valores ao lado. Esc cancela.':mode==='curve'?'Clique no início e no fim da curva; depois arraste os controles laranja C1/C2 para dar forma. Esc cancela.':'Selecione um trecho e arraste suas pontas ou os controles C1/C2. As setas indicam início → fim.';
     drawGeometry();
   }
   function drawGeometry(){
@@ -493,33 +546,43 @@
     const g=geometryCtx;g.clearRect(0,0,W,H);g.lineWidth=1;g.strokeStyle='#1c2c40';
     g.beginPath();for(let x=0;x<=W;x+=50){g.moveTo(x,0);g.lineTo(x,H);}for(let y=0;y<=H;y+=50){g.moveTo(0,y);g.lineTo(W,y);}g.stroke();
     const drawLine=(line,index,preview=false)=>{
-      const {start:a,end:b}=line,active=index===selectedLine&&!preview,angle=Math.atan2(b.y-a.y,b.x-a.x);
+      const {start:a,end:b}=line,active=index===selectedLine&&!preview;
+      const middle=pathPoint(line,.5),near=pathPoint(line,.51),angle=Math.atan2(near.y-middle.y,near.x-middle.x);
       g.strokeStyle=preview?'#ffc47f':active?'#79c7ff':'#526c8b';g.fillStyle=g.strokeStyle;g.lineWidth=active?5:3;
-      g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();
-      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      g.beginPath();tracePath(g,line);g.stroke();
+      const mx=middle.x,my=middle.y;
       g.beginPath();g.moveTo(mx+12*Math.cos(angle),my+12*Math.sin(angle));g.lineTo(mx-9*Math.cos(angle-.6),my-9*Math.sin(angle-.6));g.lineTo(mx-9*Math.cos(angle+.6),my-9*Math.sin(angle+.6));g.closePath();g.fill();
       for(const point of [a,b]){g.beginPath();g.arc(point.x,point.y,active?8:5,0,Math.PI*2);g.fill();}
       g.font='18px Segoe UI,Arial';g.textAlign='left';
       g.fillText(preview?'Nova linha':`${index+1} · ${formatNumber(line.meters)} m`,clamp(mx+14,5,W-140),clamp(my-12,22,H-8));
       if(active){g.font='16px Segoe UI,Arial';g.fillText('INÍCIO',clamp(a.x+12,5,W-75),clamp(a.y+23,20,H-5));g.fillText('FIM',clamp(b.x+12,5,W-50),clamp(b.y-12,20,H-5));}
+      if(active&&line.type==='bezier'){
+        g.strokeStyle='#d99a50';g.fillStyle='#ffc47f';g.lineWidth=1;
+        g.beginPath();g.moveTo(a.x,a.y);g.lineTo(line.control1.x,line.control1.y);g.moveTo(b.x,b.y);g.lineTo(line.control2.x,line.control2.y);g.stroke();
+        for(const [key,label] of [['control1','C1'],['control2','C2']]){const p=line[key];g.fillRect(p.x-7,p.y-7,14,14);g.fillText(label,clamp(p.x+12,5,W-30),clamp(p.y-10,20,H-5));}
+      }
     };
     lines.forEach((line,i)=>drawLine(drag&&drag.index===i?{...line,[drag.endpoint]:drag.point}:line,i));
-    if(pendingStart){drawLine({start:pendingStart,end:pointerPreview||pendingStart},-1,true);}
+    if(pendingStart){const end=pointerPreview||pendingStart;drawLine({start:pendingStart,end,...(geometryMode==='curve'?{type:'bezier',...defaultControls(pendingStart,end)}:{})},-1,true);}
   }
   function canvasPoint(event){const rect=geometryCanvas.getBoundingClientRect();return {x:Math.round(clamp((event.clientX-rect.left)*W/rect.width,0,W)*10)/10,y:Math.round(clamp((event.clientY-rect.top)*H/rect.height,0,H)*10)/10};}
-  function lineDistance(point,line){const dx=line.end.x-line.start.x,dy=line.end.y-line.start.y,t=clamp(((point.x-line.start.x)*dx+(point.y-line.start.y)*dy)/(dx*dx+dy*dy));return Math.hypot(point.x-line.start.x-t*dx,point.y-line.start.y-t*dy);}
+  function lineDistance(point,line){
+    const path=measurePath(line).points;let distance=Infinity;
+    for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],dx=b.x-a.x,dy=b.y-a.y,t=clamp(((point.x-a.x)*dx+(point.y-a.y)*dy)/(dx*dx+dy*dy||1));distance=Math.min(distance,Math.hypot(point.x-a.x-t*dx,point.y-a.y-t*dy));}
+    return distance;
+  }
   geometryCanvas.addEventListener('pointerdown',event=>{
     if(event.button!==0||drag)return;
     const point=canvasPoint(event);
-    if(geometryMode==='draw'){
+    if(geometryMode==='draw'||geometryMode==='curve'){
       if(!pendingStart){pendingStart=point;pointerPreview=point;drawGeometry();return;}
-      const candidate=[...lines,{name:`Linha ${lines.length+1}`,start:pendingStart,end:point,meters:5,leds:600,pixels:200}];
+      const candidate=[...lines,{name:`${geometryMode==='curve'?'Curva':'Linha'} ${lines.length+1}`,start:pendingStart,end:point,meters:5,leds:600,pixels:200,...(geometryMode==='curve'?{type:'bezier',...defaultControls(pendingStart,point)}:{})}];
       if(commitGeometry(candidate,lines.length,'Linha adicionada. Ajuste metragem, LEDs e pixels.'))setGeometryMode('select');
       return;
     }
     const radius=14*W/geometryCanvas.getBoundingClientRect().width;
     const selected=lines[selectedLine];
-    const endpoint=['start','end'].find(key=>Math.hypot(selected[key].x-point.x,selected[key].y-point.y)<=radius);
+    const endpoint=(selected.type==='bezier'?['control1','control2','start','end']:['start','end']).find(key=>Math.hypot(selected[key].x-point.x,selected[key].y-point.y)<=radius);
     if(endpoint){drag={index:selectedLine,endpoint,point,pointerId:event.pointerId};geometryCanvas.setPointerCapture(event.pointerId);return;}
     const nearest=lines.map((line,i)=>({i,d:lineDistance(point,line)})).sort((a,b)=>a.d-b.d)[0];
     if(nearest.d<=radius){selectedLine=nearest.i;refreshGeometry();}
@@ -535,24 +598,33 @@
   geometryCanvas.addEventListener('lostpointercapture',()=>{if(drag){drag=null;drawGeometry();}});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'){drag=null;setGeometryMode('select');}});
   $('selectLineBtn').onclick=()=>setGeometryMode('select');$('drawLineBtn').onclick=()=>setGeometryMode('draw');
+  $('drawCurveBtn').onclick=()=>setGeometryMode('curve');
+  $('lineType').onchange=toggleCurveFields;
+  $('infinityTemplateBtn').onclick=()=>{setGeometryMode('select');commitGeometry(infinityLines(),0,'Modelo infinito aplicado: 4 curvas, 20 m, 2.400 LEDs e 800 pixels.');};
+  $('undoGeometryBtn').onclick=()=>{
+    const previous=geometryHistory.pop();if(!previous)return;
+    setGeometryMode('select');lines=previous.lines;selectedLine=previous.selectedLine;allocateLines();updateStripInfo();refreshGeometry();
+    geometryMessage('Geometria anterior recuperada.'+(persistGeometry()?' Salva neste navegador.':' Exporte uma cópia JSON.'));
+  };
   $('lineSelect').onchange=event=>{selectedLine=+event.target.value;refreshGeometry();};
   $('lineForm').onsubmit=event=>{
     event.preventDefault();
     const line={name:$('lineName').value,start:{x:+$('lineStartX').value,y:+$('lineStartY').value},end:{x:+$('lineEndX').value,y:+$('lineEndY').value},meters:+$('lineMeters').value,leds:+$('lineLeds').value,pixels:+$('linePixels').value};
+    if($('lineType').value==='bezier')Object.assign(line,{type:'bezier',control1:{x:+$('lineControl1X').value,y:+$('lineControl1Y').value},control2:{x:+$('lineControl2X').value,y:+$('lineControl2Y').value}});
     commitGeometry(lines.map((previous,i)=>i===selectedLine?line:previous));
   };
-  $('reverseLineBtn').onclick=()=>commitGeometry(lines.map((line,i)=>i===selectedLine?{...line,start:line.end,end:line.start}:line),selectedLine,'Sentido da linha invertido.');
+  $('reverseLineBtn').onclick=()=>commitGeometry(lines.map((line,i)=>i===selectedLine?{...line,start:line.end,end:line.start,...(line.type==='bezier'?{control1:line.control2,control2:line.control1}:{})}:line),selectedLine,'Sentido da linha invertido.');
   $('deleteLineBtn').onclick=()=>commitGeometry(lines.filter((_,i)=>i!==selectedLine),selectedLine,'Linha excluída.');
   $('resetGeometryBtn').onclick=()=>{setGeometryMode('select');commitGeometry(defaultLines(+$('columns').value),0,'Modelo de colunas aplicado (5 m por linha).');};
   $('exportGeometryBtn').onclick=()=>{
-    const url=URL.createObjectURL(new Blob([JSON.stringify({version:1,lines},null,2)],{type:'application/json'}));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(geometryData(),null,2)],{type:'application/json'}));
     const link=document.createElement('a');link.href=url;link.download='beatlight-geometria.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     geometryMessage('Geometria exportada com os valores aplicados.');
   };
   $('importGeometryBtn').onclick=()=>$('importGeometryFile').click();
   $('importGeometryFile').onchange=async event=>{
     const file=event.target.files[0];if(!file)return;
-    try{if(file.size>200000)throw new Error('Arquivo muito grande para uma geometria.');const data=JSON.parse(await file.text());if(data.version!==1)throw new Error('Versão de geometria não suportada.');if(commitGeometry(data.lines,0,'Geometria importada.'))setGeometryMode('select');}
+    try{if(file.size>200000)throw new Error('Arquivo muito grande para uma geometria.');const data=JSON.parse(await file.text());if(![1,2].includes(data.version))throw new Error('Versão de geometria não suportada.');if(commitGeometry(data.lines,0,'Geometria importada.'))setGeometryMode('select');}
     catch(error){geometryMessage('Não foi possível importar: '+error.message,true);}finally{event.target.value='';}
   };
   $('sceneBars').onchange=e=>{state.sceneBars=+e.target.value;playback.nextBeat=state.beat+sceneBeats();$('sceneBarsText').textContent=state.sceneBars};
@@ -747,10 +819,23 @@
         }
       }
       resource.context.putImageData(resource.texture,0,0);
-      lightCtx.save();lightCtx.translate(line.start.x,line.start.y);lightCtx.rotate(Math.atan2(dy,dx)-Math.PI/2);
-      lightCtx.drawImage(resource.canvas,-tubeWidth/2,0,tubeWidth,length);lightCtx.restore();
+      if(line.type==='bezier'){
+        // Map the LED texture by arc length, so tight bends do not bunch pixels.
+        const route=resource.route,segments=route.length-1;
+        for(let i=0;i<segments;i++){
+          const a=route[i],b=route[i+1],sx=b.x-a.x,sy=b.y-a.y;
+          lightCtx.save();lightCtx.translate(a.x,a.y);lightCtx.rotate(Math.atan2(sy,sx)-Math.PI/2);
+          lightCtx.drawImage(resource.canvas,0,i*line.leds/segments,9,line.leds/segments,
+            -tubeWidth/2,-.2,tubeWidth,Math.hypot(sx,sy)+.4);
+          lightCtx.restore();
+        }
+      }else{
+        lightCtx.save();lightCtx.translate(line.start.x,line.start.y);lightCtx.rotate(Math.atan2(dy,dx)-Math.PI/2);
+        lightCtx.drawImage(resource.canvas,-tubeWidth/2,0,tubeWidth,length);lightCtx.restore();
+      }
       ctx.fillStyle='#657183';ctx.font='11px Segoe UI,Arial';ctx.textAlign='center';
-      ctx.fillText(String(c+1).padStart(2,'0'),clamp(line.start.x,15,W-15),clamp(line.start.y+30,50,H-10));
+      const label=line.type==='bezier'?pointAtDistance(resource.path,.5):line.start;
+      ctx.fillText(String(c+1).padStart(2,'0'),clamp(label.x,15,W-15),clamp(label.y+30,50,H-10));
     }
     ctx.save();ctx.globalCompositeOperation='screen';
     // Broad spill, close diffusion, then the cylindrical luminous core.
@@ -852,7 +937,7 @@
   playback.current=organicDescriptor();
   try{
     const saved=localStorage.getItem(geometryKey);
-    if(saved){const data=JSON.parse(saved);if(data.version!==1)throw new Error('Versão inválida');lines=validateLines(data.lines);geometryMessage('Geometria recuperada deste navegador.');}
+    if(saved){const data=JSON.parse(saved);if(![1,2].includes(data.version))throw new Error('Versão inválida');lines=validateLines(data.lines);geometryMessage('Geometria recuperada deste navegador.');}
     else geometryMessage('Modelo inicial: 5 m, 600 LEDs e 200 pixels por linha.');
   }catch{geometryMessage('Não foi possível recuperar a geometria local. Use o modelo inicial ou importe um JSON.',true);}
   allocateLines();refreshGeometry();

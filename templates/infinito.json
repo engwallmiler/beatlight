@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "lines": [
+    {"name":"Infinito 1","type":"bezier","start":{"x":600,"y":280},"control1":{"x":800,"y":500},"control2":{"x":980,"y":500},"end":{"x":980,"y":280},"meters":5,"leds":600,"pixels":200},
+    {"name":"Infinito 2","type":"bezier","start":{"x":980,"y":280},"control1":{"x":980,"y":60},"control2":{"x":800,"y":60},"end":{"x":600,"y":280},"meters":5,"leds":600,"pixels":200},
+    {"name":"Infinito 3","type":"bezier","start":{"x":600,"y":280},"control1":{"x":400,"y":500},"control2":{"x":220,"y":500},"end":{"x":220,"y":280},"meters":5,"leds":600,"pixels":200},
+    {"name":"Infinito 4","type":"bezier","start":{"x":220,"y":280},"control1":{"x":220,"y":60},"control2":{"x":400,"y":60},"end":{"x":600,"y":280},"meters":5,"leds":600,"pixels":200}
+  ]
+}
